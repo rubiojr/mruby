@@ -324,7 +324,7 @@ static mrb_value
 mrb_io_init(mrb_state *mrb, mrb_value io, mrb_value fnum, mrb_value mode)
 {
   struct mrb_io *fptr;
-  int fd, modenum, flags;
+  int fd, flags;
 
   fd = mrb_fixnum(fnum);
   flags   = mrb_io_modestr_to_flags(mrb, mrb_string_value_cstr(mrb, &mode));
