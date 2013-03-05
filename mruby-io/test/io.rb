@@ -111,6 +111,26 @@ assert('IO#read') do
   io.closed?
 end
 
+assert('IO#readchar, IO#getc') do
+  fd = IO.sysopen $mrbtest_io_rfname
+  io = IO.new fd
+  def io._buf
+    @buf
+  end
+  assert_equal 'm', io.readchar
+  assert_equal 1, io.pos
+  assert_equal 'r', io.getc
+  assert_equal 2, io.pos
+  io.gets
+  assert_raise EOFError do
+    io.readchar
+  end
+  assert_equal nil, io.getc
+  io.close
+  io.closed?
+end
+
+
 assert('IO#gets - 1') do
   fd = IO.sysopen $mrbtest_io_rfname
   io = IO.new fd
@@ -158,6 +178,16 @@ assert('IO#gets - paragraph mode') do
   para2 = "#{'2' * 10}\n"
   text2 = io.gets("")
   assert_equal para2, text2
+  io.close
+  io.closed?
+end
+
+assert('IO.popen') do
+  io = IO.popen("ls")
+  ls = io.read
+  assert_equal ls.class, String
+  assert_include ls, 'AUTHORS'
+  assert_include ls, 'mrblib'
   io.close
   io.closed?
 end

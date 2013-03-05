@@ -57,6 +57,62 @@ error:
   return 0; /* UNREACH */
 }
 
+static int
+mrb_io_modestr_to_flags(mrb_state *mrb, const char *mode)
+{
+  int flags = 0;
+  const char *m = mode;
+
+  switch (*m++) {
+    case 'r':
+      flags |= FMODE_READABLE;
+      break;
+    case 'w':
+      flags |= FMODE_WRITABLE | FMODE_CREATE;
+      break;
+    case 'a':
+      flags |= FMODE_WRITABLE | FMODE_APPEND | FMODE_CREATE;
+      break;
+    default:
+      mrb_raisef(mrb, E_ARGUMENT_ERROR, "illegal access mode %s", mode);
+  }
+
+  while (*m) {
+    switch (*m++) {
+      case 'b':
+        flags |= FMODE_BINMODE;
+        break;
+      case '+':
+        flags |= FMODE_READWRITE;
+        break;
+      case ':':
+        /* XXX: PASSTHROUGH*/
+      default:
+        mrb_raisef(mrb, E_ARGUMENT_ERROR, "illegal access mode %s", mode);
+    }
+  }
+
+  return flags;
+}
+
+static int
+mrb_proc_exec(const char *pname)
+{
+  const char *s;
+  s = pname;
+
+  while (*s == ' ' || *s == '\t' || *s == '\n')
+    s++;
+
+  if (!*s) {
+    errno = ENOENT;
+    return -1;
+  }
+
+  execl("/bin/sh", "sh", "-c", pname, (char *)NULL);
+  return -1;
+}
+
 static void
 mrb_io_free(mrb_state *mrb, void *ptr)
 {
@@ -76,7 +132,6 @@ mrb_io_alloc(mrb_state *mrb)
 
   fptr = (struct mrb_io *)mrb_malloc(mrb, sizeof(struct mrb_io));
   fptr->fd       = -1;
-  fptr->mode     = 0;
   fptr->pid      = 0;
   fptr->lineno   = 0;
   fptr->finalize = 0;
@@ -108,14 +163,142 @@ io_open(mrb_state *mrb, mrb_value path, mrb_value mode, int perm)
   return open(pat, flags, perm);
 }
 
+#ifndef NOFILE
+#define NOFILE 64
+#endif
+
+mrb_value
+mrb_io_popen_init(mrb_state *mrb, mrb_value io, mrb_value cmd, mrb_value mode, mrb_value opt)
+{
+  struct mrb_io *fptr;
+  const char *pname;
+  int pid, modenum, flags, fd, write_fd;
+  int pr[2], pw[2];
+  int doexec;
+
+  pname = mrb_string_value_cstr(mrb, &cmd);
+  modenum = mrb_io_modestr_to_modenum(mrb, mrb_string_value_cstr(mrb, &mode));
+  flags = mrb_io_modestr_to_flags(mrb, mrb_string_value_cstr(mrb, &mode));
+
+  doexec = (strcmp("-", pname) != 0);
+
+  if (((flags & FMODE_READABLE) && pipe(pr) == -1)
+      || ((flags & FMODE_WRITABLE) && pipe(pw) == -1)) {
+    mrb_sys_fail(mrb, "pipe_open failed.");
+    return mrb_nil_value();
+  }
+
+  if (!doexec) {
+    // XXX
+    fflush(stdin);
+    fflush(stdout);
+    fflush(stderr);
+  }
+
+retry:
+  switch (pid = fork()) {
+    case 0: /* child */
+      if (flags & FMODE_READABLE) {
+        close(pr[0]);
+        if (pr[1] != 1) {
+          dup2(pr[1], 1);
+          close(pr[1]);
+        }
+      }
+      if (flags & FMODE_WRITABLE) {
+        close(pw[1]);
+        if (pw[0] != 0) {
+          dup2(pw[0], 0);
+          close(pw[0]);
+        }
+      }
+
+      if (doexec) {
+        for (fd = 3; fd < NOFILE; fd++) {
+          close(fd);
+        }
+        mrb_proc_exec(pname);
+        mrb_raisef(mrb, E_IO_ERROR, "command not found: %s", pname);
+        _exit(127);
+      }
+      return mrb_nil_value();
+    case -1: /* error */
+      if (errno == EAGAIN) {
+        goto retry;
+      } else {
+        int e = errno;
+        if (flags & FMODE_READABLE) {
+          close(pr[0]);
+          close(pr[1]);
+        }
+        if (flags & FMODE_WRITABLE) {
+          close(pw[0]);
+          close(pw[1]);
+        }
+
+        errno = e;
+        mrb_sys_fail(mrb, "pipe_open failed.");
+        return mrb_nil_value();
+      }
+      break;
+    default: /* parent */
+      if (pid < 0) {
+        mrb_sys_fail(mrb, "pipe_open failed.");
+        return mrb_nil_value();
+      } else {
+        if ((flags & FMODE_READABLE) && (flags & FMODE_WRITABLE)) {
+          close(pr[1]);
+          fd = pr[0];
+          close(pw[0]);
+          write_fd = pw[1];
+        } else if (flags & FMODE_READABLE) {
+          close(pr[1]);
+          fd = pr[0];
+        } else {
+          close(pw[0]);
+          fd = pw[1];
+        }
+
+        mrb_iv_set(mrb, io, mrb_intern(mrb, "@buf"), mrb_str_new2(mrb, ""));
+        mrb_iv_set(mrb, io, mrb_intern(mrb, "@pos"), mrb_fixnum_value(0));
+
+        fptr = mrb_io_alloc(mrb);
+        fptr->fd   = fd;
+        fptr->fd2  = write_fd;
+        fptr->pid  = pid;
+
+
+        DATA_PTR(io)  = fptr;
+        DATA_TYPE(io) = &mrb_io_type;
+        return io;
+      }
+  }
+
+  return mrb_nil_value();
+}
+
+mrb_value
+mrb_io_s_popen(mrb_state *mrb, mrb_value klass)
+{
+  mrb_value cmd, io;
+  mrb_value mode = mrb_str_new2(mrb, "r");
+  mrb_value opt  = mrb_hash_new(mrb);
+
+  mrb_get_args(mrb, "S|SH", &cmd, &mode, &opt);
+  io = mrb_io_make(mrb, mrb_class_ptr(klass));
+
+  return mrb_io_popen_init(mrb, io, cmd, mode, opt);
+}
+
 static mrb_value
 mrb_io_init(mrb_state *mrb, mrb_value io, mrb_value fnum, mrb_value mode)
 {
   struct mrb_io *fptr;
-  int fd, flags;
+  int fd, modenum, flags;
 
   fd = mrb_fixnum(fnum);
-  flags = mrb_io_modestr_to_modenum(mrb, mrb_string_value_cstr(mrb, &mode));
+  modenum = mrb_io_modestr_to_modenum(mrb, mrb_string_value_cstr(mrb, &mode));
+  flags   = mrb_io_modestr_to_flags(mrb, mrb_string_value_cstr(mrb, &mode));
 
   fptr = (struct mrb_io *)mrb_get_datatype(mrb, io, &mrb_io_type);
   if (fptr) {
@@ -125,12 +308,15 @@ mrb_io_init(mrb_state *mrb, mrb_value io, mrb_value fnum, mrb_value mode)
   mrb_iv_set(mrb, io, mrb_intern(mrb, "@buf"), mrb_str_new2(mrb, ""));
   mrb_iv_set(mrb, io, mrb_intern(mrb, "@pos"), mrb_fixnum_value(0));
 
-  fptr = mrb_io_alloc(mrb);
-  fptr->mode = flags;
-  fptr->fd   = fd;
+  fptr        = mrb_io_alloc(mrb);
+  fptr->mode  = flags;
+  fptr->fd    = fd;
+  fptr->mode  = modenum;
+  fptr->flags = flags;
 
-  DATA_PTR(io) = fptr;
+  DATA_PTR(io)  = fptr;
   DATA_TYPE(io) = &mrb_io_type;
+
   return io;
 }
 
@@ -336,6 +522,7 @@ mrb_init_io(mrb_state *mrb)
   mrb_include_module(mrb, io, mrb_class_get(mrb, "Enumerable")); /* 15.2.20.3 */
 
   mrb_define_class_method(mrb, io, "sysopen", mrb_io_s_sysopen, ARGS_ANY());
+  mrb_define_class_method(mrb, io, "popen",   mrb_io_s_popen,   ARGS_ANY());
 
   mrb_define_method(mrb, io, "initialize", mrb_io_initialize,  ARGS_ANY());    /* 15.2.20.5.21 (x)*/
   mrb_define_method(mrb, io, "sysread",    mrb_io_sysread,     ARGS_ANY());

@@ -63,6 +63,7 @@ class IO
     raise IOError if closed?
     @pos
   end
+  alias_method :tell, :pos
 
   def pos=(i)
     @pos = i
@@ -228,6 +229,18 @@ class IO
   def gets(*args)
     begin
       readline(*args)
+    rescue EOFError => e
+      nil
+    end
+  end
+
+  def readchar
+    _read(1)
+  end
+
+  def getc
+    begin
+      readchar
     rescue EOFError => e
       nil
     end
