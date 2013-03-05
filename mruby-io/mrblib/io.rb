@@ -101,7 +101,7 @@ class IO
   end
 
   def _ungets(substr)
-    raise ArgumentError unless substr.is_a?(String)
+    raise TypeError.new "expect String, got #{substr.class}" unless substr.is_a?(String)
     @pos -= substr.size
     @buf = substr + @buf
     nil
@@ -162,10 +162,14 @@ class IO
       return read
     end
 
+    if rs == ""
+      return _readline_paragraph(limit)
+    end
+
     line = ""
     while 1
       begin
-        buf = _read(BUF_SIZE)
+        buf = _read
       rescue EOFError => e
         buf = nil
       end
@@ -181,6 +185,42 @@ class IO
         line += buf
       end
     end
+
+    raise EOFError.new "end of file reached" if line.nil?
+
+    line
+  end
+
+  def _readline_paragraph(limit = nil)
+    line = ''
+    eof_raise = nil
+
+    while 1
+      begin
+        buf = readline
+      rescue EOFError => e
+        buf = nil
+        eof_raise = true
+      end
+
+      if buf.nil?
+        line = nil if line.empty?
+        break
+      else
+        line += buf
+      end
+
+      idx = line.rindex($/)
+      if idx > 0 && line[idx] == $/ && line[idx-1] == $/
+        if line.size > idx
+          _ungets(line[idx+1, line.size - (idx+1)])
+          line = line[0, idx+1]
+        end
+        break
+      end
+    end
+
+    raise EOFError.new "end of file reached" if line.nil?
 
     line
   end
