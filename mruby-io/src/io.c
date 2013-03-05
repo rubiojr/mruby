@@ -14,48 +14,9 @@
 #include "mruby/ext/io.h"
 #include "error.h"
 
-static int
-mrb_io_modestr_to_modenum(mrb_state *mrb, const char *mode)
-{
-  int flags = 0;
-  const char *m = mode;
-
-  switch (*m++) {
-    case 'r':
-      flags |= O_RDONLY;
-      break;
-    case 'w':
-      flags |= O_WRONLY | O_CREAT | O_TRUNC;
-      break;
-    case 'a':
-      flags |= O_WRONLY | O_CREAT | O_APPEND;
-      break;
-    default:
-      goto error;
-  }
-
-  while (*m) {
-    switch (*m++) {
-      case 'b':
-#ifdef O_BINARY
-        flags |= O_BINARY;
-#endif
-        break;
-      case '+':
-        flags = (flags & ~O_ACCMODE) | O_RDWR;
-        break;
-      case ':':
-        /* PASSTHROUGH */
-      default:
-        goto error;
-    }
-  }
-  return flags;
-error:
-  mrb_raisef(mrb, E_ARGUMENT_ERROR, "illegal access mode %s", mode);
-  /* mrb_raise execute exit(1) */
-  return 0; /* UNREACH */
-}
+static int mrb_io_modestr_to_flags(mrb_state *mrb, const char *modestr);
+static int mrb_io_modenum_to_flags(mrb_state *mrb, int modenum);
+static int mrb_io_flags_to_modenum(mrb_state *mrb, int flags);
 
 static int
 mrb_io_modestr_to_flags(mrb_state *mrb, const char *mode)
@@ -93,6 +54,76 @@ mrb_io_modestr_to_flags(mrb_state *mrb, const char *mode)
   }
 
   return flags;
+}
+
+static int
+mrb_io_modenum_to_flags(mrb_state *mrb, int modenum)
+{
+  int flags = 0;
+
+  switch (modenum & (O_RDONLY|O_WRONLY|O_RDWR)) {
+    case O_RDONLY:
+      flags = FMODE_READABLE;
+      break;
+    case O_WRONLY:
+      flags = FMODE_WRITABLE;
+      break;
+    case O_RDWR:
+      flags = FMODE_READWRITE;
+      break;
+  }
+
+  if (modenum & O_APPEND) {
+    flags |= FMODE_APPEND;
+  }
+  if (modenum & O_TRUNC) {
+    flags |= FMODE_TRUNC;
+  }
+  if (modenum & O_CREAT) {
+    flags |= FMODE_CREATE;
+  }
+#ifdef O_BINARY
+  if (modenum & O_BINARY) {
+    flags |= FMODE_BINMODE;
+  }
+#endif
+
+  return flags;
+}
+
+static int
+mrb_io_flags_to_modenum(mrb_state *mrb, int flags)
+{
+  int modenum = 0;
+
+  switch(flags & (FMODE_READABLE|FMODE_WRITABLE|FMODE_READWRITE)) {
+    case FMODE_READABLE:
+      modenum = O_RDONLY;
+      break;
+    case FMODE_WRITABLE:
+      modenum = O_WRONLY;
+      break;
+    case FMODE_READWRITE:
+      modenum = O_RDWR;
+      break;
+  }
+
+  if (flags & FMODE_APPEND) {
+    modenum |= O_APPEND;
+  }
+  if (flags & FMODE_TRUNC) {
+    modenum |= O_TRUNC;
+  }
+  if (flags & FMODE_CREATE) {
+    modenum |= O_CREAT;
+  }
+#ifdef O_BINARY
+  if (flags & FMODE_BINMODE) {
+    modenum |= O_BINARY
+  }
+#endif
+
+  return modenum;
 }
 
 static int
@@ -152,15 +183,15 @@ mrb_io_make(mrb_state *mrb, struct RClass *c)
 }
 
 static int
-io_open(mrb_state *mrb, mrb_value path, mrb_value mode, int perm)
+io_open(mrb_state *mrb, mrb_value path, int flags, int perm)
 {
   const char *pat;
-  int flags;
+  int modenum;
 
   pat = mrb_string_value_cstr(mrb, &path);
-  flags = mrb_io_modestr_to_modenum(mrb, mrb_string_value_cstr(mrb, &mode));
+  modenum = mrb_io_flags_to_modenum(mrb, flags);
 
-  return open(pat, flags, perm);
+  return open(pat, modenum, perm);
 }
 
 #ifndef NOFILE
@@ -172,12 +203,11 @@ mrb_io_popen_init(mrb_state *mrb, mrb_value io, mrb_value cmd, mrb_value mode, m
 {
   struct mrb_io *fptr;
   const char *pname;
-  int pid, modenum, flags, fd, write_fd;
+  int pid, flags, fd, write_fd;
   int pr[2], pw[2];
   int doexec;
 
   pname = mrb_string_value_cstr(mrb, &cmd);
-  modenum = mrb_io_modestr_to_modenum(mrb, mrb_string_value_cstr(mrb, &mode));
   flags = mrb_io_modestr_to_flags(mrb, mrb_string_value_cstr(mrb, &mode));
 
   doexec = (strcmp("-", pname) != 0);
@@ -297,7 +327,6 @@ mrb_io_init(mrb_state *mrb, mrb_value io, mrb_value fnum, mrb_value mode)
   int fd, modenum, flags;
 
   fd = mrb_fixnum(fnum);
-  modenum = mrb_io_modestr_to_modenum(mrb, mrb_string_value_cstr(mrb, &mode));
   flags   = mrb_io_modestr_to_flags(mrb, mrb_string_value_cstr(mrb, &mode));
 
   fptr = (struct mrb_io *)mrb_get_datatype(mrb, io, &mrb_io_type);
@@ -309,9 +338,7 @@ mrb_io_init(mrb_state *mrb, mrb_value io, mrb_value fnum, mrb_value mode)
   mrb_iv_set(mrb, io, mrb_intern(mrb, "@pos"), mrb_fixnum_value(0));
 
   fptr        = mrb_io_alloc(mrb);
-  fptr->mode  = flags;
   fptr->fd    = fd;
-  fptr->mode  = modenum;
   fptr->flags = flags;
 
   DATA_PTR(io)  = fptr;
@@ -358,7 +385,7 @@ mrb_io_s_sysopen(mrb_state *mrb, mrb_value klass)
 {
   mrb_value path = mrb_nil_value();
   mrb_value mode = mrb_nil_value();
-  int fd, perm = -1;
+  int fd, flags, perm = -1;
 
   mrb_get_args(mrb, "S|Sb", &path, &mode, &perm);
   if (mrb_nil_p(mode)) {
@@ -368,7 +395,8 @@ mrb_io_s_sysopen(mrb_state *mrb, mrb_value klass)
     perm = 0666;
   }
 
-  fd = io_open(mrb, path, mode, perm);
+  flags = mrb_io_modestr_to_flags(mrb, mrb_string_value_cstr(mrb, &mode));
+  fd = io_open(mrb, path, flags, perm);
 
   return mrb_fixnum_value(fd);
 }
@@ -464,7 +492,7 @@ mrb_io_sync(mrb_state *mrb, mrb_value io)
   struct mrb_io *fptr;
   fptr = (struct mrb_io *)mrb_get_datatype(mrb, io, &mrb_io_type);
 
-  if (fptr->mode & FMODE_SYNC) {
+  if (fptr->flags & FMODE_SYNC) {
     return mrb_true_value();
   }
 
@@ -480,9 +508,9 @@ mrb_io_set_sync(mrb_state *mrb, mrb_value io)
 
   mrb_get_args(mrb, "o", &mode);
   if (mrb_test(mode)) {
-    fptr->mode |= FMODE_SYNC;
+    fptr->flags |= FMODE_SYNC;
   } else {
-    fptr->mode &= ~FMODE_SYNC;
+    fptr->flags &= ~FMODE_SYNC;
   }
 
   return mode;
