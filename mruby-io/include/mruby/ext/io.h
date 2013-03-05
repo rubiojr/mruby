@@ -52,17 +52,8 @@ struct mrb_io_type {
 #define E_IO_ERROR                 (mrb_class_obj_get(mrb, "IOError"))
 #define E_EOF_ERROR                (mrb_class_obj_get(mrb, "EOFError"))
 
-#define mrb_io_ptr(s) ((struct RData *)((s).value.p))
-
-#define GetOpenFile(mrb, obj, fp) rb_io_check_closed(mrb, (fp) = DATA_PTR(obj))
-#define GetReadFile(fptr) ((fptr)->f)
-#define GetWriteFile(fptr) (((fptr)->f2) ? (fptr)->f2 : (fptr)->f)
-
 mrb_value mrb_open_file(mrb_state *mrb, int argc, mrb_value *argv, mrb_value io);
 void fptr_finalize(mrb_state *mrb, struct mrb_io *fptr, int noraise);
-mrb_value rb_io_initialize(mrb_state *mrb, int argc, mrb_value *argv, mrb_value io);
-void mrb_io_check_initialized(mrb_state *mrb, struct mrb_io *fptr);
-void rb_io_check_closed(mrb_state *mrb, struct mrb_io *fptr);
 mrb_value mrb_file_exist(mrb_state *mrb, mrb_value fname);
 
 #if defined(__cplusplus)
