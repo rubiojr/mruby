@@ -57,6 +57,7 @@ class IO
 
     ret
   end
+  alias_method :eof, :eof?
 
   def pos
     raise IOError if closed?
@@ -113,27 +114,32 @@ class IO
   end
 
   def read(length = nil)
-    if length.nil?
-      str = ''
-      str += buf while (buf = _read)
-      return str
-    end
-
-    unless length.is_a?(Integer)
+    unless length.nil? or length.class == Fixnum
       raise TypeError.new "can't convert #{length.class} into Integer"
     end
-    if length < 0
+    if length && length < 0
       raise ArgumentError.new "negative length: #{length} given"
     end
 
     str = ''
     while 1
-      buf = _read
-      str += buf
-      break if str.size >= length
+      begin
+        buf = _read
+      rescue EOFError => e
+        buf = nil
+      end
+
+      if buf.nil?
+        str = nil if str.empty?
+        break
+      else
+        str += buf
+      end
+
+      break if length && str.size >= length
     end
 
-    if str.size > length
+    if length && str.size > length
       _ungets(str[length, str.size-length])
       str = str[0, length]
     end

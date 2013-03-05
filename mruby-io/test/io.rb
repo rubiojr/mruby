@@ -82,6 +82,8 @@ assert('IO#_read') do
     io._read(5)
   end
   assert_equal '', io._read(0)
+  assert_equal true, io.eof
+  assert_equal true, io.eof?
   io.close
   io.closed?
 end
@@ -104,7 +106,7 @@ assert('IO#read') do
   io = IO.new fd
   assert_equal 'mruby', io.read(5)
   assert_equal $mrbtest_io_msg[5,100] + "\n", io.read
-  assert_equal "",  io.read
+  assert_equal nil,  io.read
   io.close
   io.closed?
 end
