@@ -143,17 +143,17 @@ end
 assert('IO#gets - 2') do
   fd = IO.sysopen $mrbtest_io_wfname, "w"
   io = IO.new fd, "w"
-  io.write "0123456789" * 5 + "\na"
-  assert_equal 52, io.pos
+  io.write "0123456789" * 2 + "\na"
+  assert_equal 22, io.pos
   io.close
   assert_equal true, io.closed?
 
   fd = IO.sysopen $mrbtest_io_wfname
   io = IO.new fd
   line = io.gets
-  assert_equal "0123456789" * 5 + "\n", line
-  assert_equal 51, line.size
-  assert_equal 51, io.pos
+  assert_equal "0123456789" * 2 + "\n", line
+  assert_equal 21, line.size
+  assert_equal 21, io.pos
   assert_equal "a", io.gets
   assert_equal nil, io.gets
   io.close
