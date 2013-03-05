@@ -86,14 +86,25 @@ assert('IO#_read') do
   io.closed?
 end
 
+assert('IO#read argument check') do
+  fd = IO.sysopen $mrbtest_io_rfname
+  io = IO.new fd
+  assert_raise TypeError do
+    io.read("str")
+  end
+  assert_raise ArgumentError do
+    io.read(-5)
+  end
+  io.close
+  io.closed?
+end
+
 assert('IO#read') do
-  skip
   fd = IO.sysopen $mrbtest_io_rfname
   io = IO.new fd
   assert_equal 'mruby', io.read(5)
   assert_equal $mrbtest_io_msg[5,100] + "\n", io.read
   assert_equal "",  io.read
-  assert_equal nil, io.read(5)
   io.close
   io.closed?
 end

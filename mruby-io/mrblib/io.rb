@@ -109,10 +109,32 @@ class IO
   end
 
   def read(length = nil)
-    raise ArgumentError if (not length.is_a?(Fixnum)) || length < 0
+    if length.nil?
+      str = ''
+      str += buf while (buf = _read)
+      return str
+    end
 
-    # TODO: length が指定された時は、その長さに達するまでブロックして待つ
-    # TODO: length が指定されていないときは、読めるだけ読んで、結果を返す
+    unless length.is_a?(Integer)
+      raise TypeError.new "can't convert #{length.class} into Integer"
+    end
+    if length < 0
+      raise ArgumentError.new "negative length: #{length} given"
+    end
+
+    str = ''
+    while 1
+      buf = _read
+      str += buf
+      break if str.size >= length
+    end
+
+    if str.size > length
+      _ungets(str[length, str.size-length])
+      str = str[0, length]
+    end
+
+    str
   end
 
   def readline(arg = $/, limit = nil)
