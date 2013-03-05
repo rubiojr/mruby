@@ -140,6 +140,28 @@ assert('IO#gets - 2') do
   io.closed?
 end
 
+assert('IO#gets - paragraph mode') do
+  fd = IO.sysopen $mrbtest_io_wfname, "w"
+  io = IO.new fd, "w"
+  io.write "0" * 10 + "\n"
+  io.write "1" * 10 + "\n\n"
+  io.write "2" * 10 + "\n"
+  assert_equal 34, io.pos
+  io.close
+  assert_equal true, io.closed?
+
+  fd = IO.sysopen $mrbtest_io_wfname
+  io = IO.new fd
+  para1 = "#{'0' * 10}\n#{'1' * 10}\n\n"
+  text1 = io.gets("")
+  assert_equal para1, text1
+  para2 = "#{'2' * 10}\n"
+  text2 = io.gets("")
+  assert_equal para2, text2
+  io.close
+  io.closed?
+end
+
 assert('IO TEST CLEANUP') do
   assert_nil MRubyIOTestUtil.io_test_cleanup
 end
