@@ -23,6 +23,8 @@ MRuby::Build.new do |conf|
   # Use standard Kernel#sprintf method
   conf.gem 'mrbgems/mruby-sprintf'
 
+  conf.gem 'mruby-io'
+
   # Generate binaries
   # conf.bins = %w(mrbc mruby mirb)
   
