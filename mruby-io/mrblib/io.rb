@@ -11,6 +11,10 @@ class IO
 
   BUF_SIZE = 1024
 
+  def for_fd(fd, mode = "r", opt = {})
+    self.new(fd, mode, opt)
+  end
+
   def self.open(fd, mode = "r", opt = {}, &block)
     io = self.new(fd, mode, opt)
 
