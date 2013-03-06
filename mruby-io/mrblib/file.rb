@@ -94,4 +94,11 @@ class File < IO
   def self.zero?(file)
     FileTest.zero?(file)
   end
+
+  def self.extname(filename)
+    fname = self.basename(filename)
+    return '' if fname[0] == '.' || fname.index('.').nil?
+    ext = fname.split('.').last
+    ext.empty? ? '' : ".#{ext}"
+  end
 end
