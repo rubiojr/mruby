@@ -270,4 +270,51 @@ class IO
       nil
     end
   end
+
+  # 15.2.20.5.3
+  def each(&block)
+    while line = self.gets
+      block.call(line)
+    end
+    self
+  end
+
+  # 15.2.20.5.4
+  def each_byte(&block)
+    while char = self.getc
+      block.call(char)
+    end
+    self
+  end
+
+  # 15.2.20.5.5
+  alias each_line each
+
+  alias each_char each_byte
+
+  def readlines
+    ary = []
+    while (line = gets)
+      ary << line
+    end
+    ary
+  end
+
+  def puts(*args)
+    i = 0
+    len = args.size
+    while i < len
+      s = args[i].to_s
+      write s
+      write "\n" if (s[-1] != "\n")
+      i += 1
+    end
+    write "\n" if len == 0
+    nil
+  end
+
+  def printf(*args)
+    write sprintf(*args)
+    nil
+  end
 end
