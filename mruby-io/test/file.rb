@@ -57,10 +57,8 @@ assert('File.join') do
 end
 
 assert('File.realpath') do
-  skip
-  usrbin = IO.popen("cd bin; /bin/pwd -P") { |f| f.read.strip }
-  File.realpath("bin") == usrbin and
-    File.realpath(".", "/usr/bin") == usrbin
+  usrbin = IO.popen("cd bin; /bin/pwd -P") { |f| f.read.chomp }
+  assert_equal usrbin, File.realpath("bin")
 end
 
 assert('File TEST CLEANUP') do
