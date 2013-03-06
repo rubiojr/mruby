@@ -154,7 +154,7 @@ mrb_io_free(mrb_state *mrb, void *ptr)
   }
 }
 
-static struct mrb_data_type mrb_io_type = { "IO", mrb_io_free };
+struct mrb_data_type mrb_io_type = { "IO", mrb_io_free };
 
 static struct mrb_io*
 mrb_io_alloc(mrb_state *mrb)
@@ -521,8 +521,12 @@ mrb_io_close(mrb_state *mrb, mrb_value io)
 {
   struct mrb_io *fptr;
   fptr = (struct mrb_io *)mrb_get_datatype(mrb, io, &mrb_io_type);
-  fptr_finalize(mrb, fptr, FALSE);
+  if (fptr && fptr->fd < 0) {
+    mrb_raise(mrb, E_IO_ERROR, "closed stream.");
+    return mrb_nil_value();
+  }
 
+  fptr_finalize(mrb, fptr, FALSE);
   return mrb_nil_value();
 }
 
