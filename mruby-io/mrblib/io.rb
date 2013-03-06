@@ -30,6 +30,21 @@ class IO
     end
   end
 
+  def self.popen(command, mode = 'r', &block)
+    io = self._popen(command, mode)
+    return io unless block
+
+    begin
+      yield io
+    ensure
+      begin
+        io.close unless io.closed?
+      rescue IOError
+        # nothing
+      end
+    end
+  end
+
   def write(string)
     str = string.is_a?(String) ? string : string.to_s
     return str.size unless str.size > 0
