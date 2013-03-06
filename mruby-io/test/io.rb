@@ -145,16 +145,29 @@ assert('IO#pos=, IO#seek') do
 end
 
 
-assert('IO#gets - 1') do
+assert('IO#gets') do
   fd = IO.sysopen $mrbtest_io_rfname
   io = IO.new fd
-  assert_equal $mrbtest_io_msg + "\n", io.gets
-  assert_equal nil, io.gets
-  io.close
-  io.closed?
-end
 
-assert('IO#gets - 2') do
+  # gets without arguments
+  assert_equal $mrbtest_io_msg + "\n", io.gets, "gets without arguments"
+  assert_equal nil, io.gets, "gets returns nil, when EOF"
+
+  # gets with limit
+  io.pos = 0
+  assert_equal $mrbtest_io_msg[0, 5], io.gets(5), "gets with limit"
+
+  # gets with rs
+  io.pos = 0
+  assert_equal $mrbtest_io_msg[0, 6], io.gets(' '), "gets with rs"
+
+  # gets with rs, limit
+  io.pos = 0
+  assert_equal $mrbtest_io_msg[0, 5], io.gets(' ', 5), "gets with rs, limit"
+  io.close
+  assert_equal true, io.closed?, "close success"
+
+  # reading many-lines file.
   fd = IO.sysopen $mrbtest_io_wfname, "w"
   io = IO.new fd, "w"
   io.write "0123456789" * 2 + "\na"
@@ -165,11 +178,18 @@ assert('IO#gets - 2') do
   fd = IO.sysopen $mrbtest_io_wfname
   io = IO.new fd
   line = io.gets
-  assert_equal "0123456789" * 2 + "\n", line
+
+  # gets first line
+  assert_equal "0123456789" * 2 + "\n", line, "gets first line"
   assert_equal 21, line.size
   assert_equal 21, io.pos
-  assert_equal "a", io.gets
-  assert_equal nil, io.gets
+
+  # gets second line
+  assert_equal "a", io.gets, "gets second line"
+
+  # gets third line
+  assert_equal nil, io.gets, "gets third line; returns nil"
+
   io.close
   io.closed?
 end

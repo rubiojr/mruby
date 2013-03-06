@@ -9,7 +9,7 @@ class IO
   SEEK_CUR = 1
   SEEK_END = 2
 
-  BUF_SIZE = 1024
+  BUF_SIZE = 4096
 
   def for_fd(fd, mode = "r", opt = {})
     self.new(fd, mode, opt)
@@ -111,7 +111,11 @@ class IO
   def _ungets(substr)
     raise TypeError.new "expect String, got #{substr.class}" unless substr.is_a?(String)
     @pos -= substr.size
-    @buf = substr + @buf
+    if @buf.empty?
+      @buf = substr
+    else
+      @buf = substr + @buf
+    end
     nil
   end
 
@@ -192,9 +196,16 @@ class IO
       else
         line += buf
       end
+
+      break if limit && line && line.size >= limit
     end
 
     raise EOFError.new "end of file reached" if line.nil?
+
+    if limit && line.size > limit
+      _ungets(line[limit, line.size-limit])
+      line = line[0, limit]
+    end
 
     line
   end
@@ -226,9 +237,16 @@ class IO
         end
         break
       end
+
+      break if limit && line && line.size >= limit
     end
 
     raise EOFError.new "end of file reached" if line.nil?
+
+    if limit && line.size > limit
+      _ungets(line[limit, line.size-limit])
+      line = line[0, limit]
+    end
 
     line
   end
