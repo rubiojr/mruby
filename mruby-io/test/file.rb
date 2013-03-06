@@ -40,6 +40,15 @@ assert('File.basename') do
   name == "filename"
 end
 
+assert('File.extname') do
+  assert_equal '.txt', File.extname('foo/foo.txt')
+  assert_equal '.gz',  File.extname('foo/foo.tar.gz')
+  assert_equal '', File.extname('foo/bar')
+  assert_equal '', File.extname('foo/.bar')
+  assert_equal '', File.extname('foo.txt/bar')
+  assert_equal '', File.extname('.foo')
+end
+
 assert('File.size') do
   File.size($mrbtest_io_rfname) == $mrbtest_io_msg.size + 1  and
   File.size($mrbtest_io_wfname) == 0
