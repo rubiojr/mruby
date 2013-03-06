@@ -218,6 +218,7 @@ end
 
 assert('IO.popen') do
   io = IO.popen("ls")
+  assert_equal Fixnum, io.pid.class
   ls = io.read
   assert_equal ls.class, String
   assert_include ls, 'AUTHORS'

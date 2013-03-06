@@ -539,6 +539,19 @@ mrb_io_closed(mrb_state *mrb, mrb_value io)
   return mrb_true_value();
 }
 
+mrb_value
+mrb_io_pid(mrb_state *mrb, mrb_value io)
+{
+  struct mrb_io *fptr;
+  fptr = (struct mrb_io *)mrb_get_datatype(mrb, io, &mrb_io_type);
+
+  if (fptr->pid > 0) {
+    return mrb_fixnum_value(fptr->pid);
+  }
+
+  return mrb_nil_value();
+}
+
 void
 mrb_init_io(mrb_state *mrb)
 {
@@ -560,6 +573,7 @@ mrb_init_io(mrb_state *mrb)
   mrb_define_method(mrb, io, "sync=",      mrb_io_set_sync,    ARGS_REQ(1));   /* 15.2.20.5.19 */
   mrb_define_method(mrb, io, "close",      mrb_io_close,       ARGS_NONE());   /* 15.2.20.5.1 */
   mrb_define_method(mrb, io, "closed?",    mrb_io_closed,      ARGS_NONE());   /* 15.2.20.5.2 */
+  mrb_define_method(mrb, io, "pid",        mrb_io_pid,         ARGS_NONE());   /* 15.2.20.5.2 */
 
   mrb_gv_set(mrb, mrb_intern(mrb, "$/"), mrb_str_new_cstr(mrb, "\n"));
 }
