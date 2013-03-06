@@ -130,6 +130,20 @@ assert('IO#readchar, IO#getc') do
   io.closed?
 end
 
+assert('IO#pos=, IO#seek') do
+  fd = IO.sysopen $mrbtest_io_rfname
+  io = IO.new fd
+  def io._buf
+    @buf
+  end
+  assert_equal 'm', io.getc
+  assert_equal 1, io.pos
+  assert_equal 0, io.seek(0)
+  assert_equal 0, io.pos
+  io.close
+  io.closed?
+end
+
 
 assert('IO#gets - 1') do
   fd = IO.sysopen $mrbtest_io_rfname
