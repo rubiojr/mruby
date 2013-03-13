@@ -169,7 +169,7 @@ mrb_file_realpath(mrb_state *mrb, mrb_value klass)
   argc = mrb_get_args(mrb, "S|S", &pathname, &dir_string);
   if (argc == 2) {
     s = mrb_str_dup(mrb, dir_string);
-    s = mrb_str_append(mrb, s, mrb_str_new2(mrb, FILE_SEPARATOR));
+    s = mrb_str_append(mrb, s, mrb_str_new_cstr(mrb, FILE_SEPARATOR));
     s = mrb_str_append(mrb, s, pathname);
     pathname = s;
   }
@@ -288,6 +288,6 @@ mrb_init_file(mrb_state *mrb)
   mrb_define_const(mrb, file, "LOCK_EX", mrb_fixnum_value(LOCK_EX));
   mrb_define_const(mrb, file, "LOCK_UN", mrb_fixnum_value(LOCK_UN));
   mrb_define_const(mrb, file, "LOCK_NB", mrb_fixnum_value(LOCK_NB));
-  mrb_define_const(mrb, file, "SEPARATOR", mrb_str_new2(mrb, FILE_SEPARATOR));
+  mrb_define_const(mrb, file, "SEPARATOR", mrb_str_new_cstr(mrb, FILE_SEPARATOR));
 
 }

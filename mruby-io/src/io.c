@@ -289,7 +289,7 @@ retry:
           fd = pw[1];
         }
 
-        mrb_iv_set(mrb, io, mrb_intern(mrb, "@buf"), mrb_str_new2(mrb, ""));
+        mrb_iv_set(mrb, io, mrb_intern(mrb, "@buf"), mrb_str_new_cstr(mrb, ""));
         mrb_iv_set(mrb, io, mrb_intern(mrb, "@pos"), mrb_fixnum_value(0));
 
         fptr = mrb_io_alloc(mrb);
@@ -311,7 +311,7 @@ mrb_value
 mrb_io_s_popen(mrb_state *mrb, mrb_value klass)
 {
   mrb_value cmd, io;
-  mrb_value mode = mrb_str_new2(mrb, "r");
+  mrb_value mode = mrb_str_new_cstr(mrb, "r");
   mrb_value opt  = mrb_hash_new(mrb);
 
   mrb_get_args(mrb, "S|SH", &cmd, &mode, &opt);
@@ -334,7 +334,7 @@ mrb_io_init(mrb_state *mrb, mrb_value io, mrb_value fnum, mrb_value mode)
     mrb_io_free(mrb, fptr);
   }
 
-  mrb_iv_set(mrb, io, mrb_intern(mrb, "@buf"), mrb_str_new2(mrb, ""));
+  mrb_iv_set(mrb, io, mrb_intern(mrb, "@buf"), mrb_str_new_cstr(mrb, ""));
   mrb_iv_set(mrb, io, mrb_intern(mrb, "@pos"), mrb_fixnum_value(0));
 
   fptr        = mrb_io_alloc(mrb);
@@ -354,7 +354,7 @@ mrb_io_initialize(mrb_state *mrb, mrb_value io)
 
   mrb_get_args(mrb, "i|S", &fnum, &mode);
   if (mrb_nil_p(mode)) {
-    mode = mrb_str_new2(mrb, "r");
+    mode = mrb_str_new_cstr(mrb, "r");
   }
   return mrb_io_init(mrb, io, fnum, mode);
 }
@@ -389,7 +389,7 @@ mrb_io_s_sysopen(mrb_state *mrb, mrb_value klass)
 
   mrb_get_args(mrb, "S|Sb", &path, &mode, &perm);
   if (mrb_nil_p(mode)) {
-    mode = mrb_str_new2(mrb, "r");
+    mode = mrb_str_new_cstr(mrb, "r");
   }
   if (perm < 0) {
     perm = 0666;
@@ -425,7 +425,7 @@ mrb_io_sysread(mrb_state *mrb, mrb_value io)
   switch (ret) {
     case 0: /* EOF */
       if (maxlen == 0) {
-        buf = mrb_str_new2(mrb, "");
+        buf = mrb_str_new_cstr(mrb, "");
       } else {
         mrb_raise(mrb, E_EOF_ERROR, "sysread failed: End of File");
         return mrb_nil_value();

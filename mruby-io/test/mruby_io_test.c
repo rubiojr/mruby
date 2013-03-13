@@ -17,13 +17,13 @@ mrb_io_test_io_setup(mrb_state *mrb, mrb_value self)
 
   mktemp(rfname);
   mktemp(wfname);
-  mrb_gv_set(mrb, mrb_intern(mrb, "$mrbtest_io_rfname"), mrb_str_new2(mrb, rfname));
-  mrb_gv_set(mrb, mrb_intern(mrb, "$mrbtest_io_wfname"), mrb_str_new2(mrb, wfname));
-  mrb_gv_set(mrb, mrb_intern(mrb, "$mrbtest_io_msg"), mrb_str_new2(mrb, msg));
+  mrb_gv_set(mrb, mrb_intern(mrb, "$mrbtest_io_rfname"), mrb_str_new_cstr(mrb, rfname));
+  mrb_gv_set(mrb, mrb_intern(mrb, "$mrbtest_io_wfname"), mrb_str_new_cstr(mrb, wfname));
+  mrb_gv_set(mrb, mrb_intern(mrb, "$mrbtest_io_msg"), mrb_str_new_cstr(mrb, msg));
 
-  mrb_ary_push(mrb, ary, mrb_str_new2(mrb, rfname));
-  mrb_ary_push(mrb, ary, mrb_str_new2(mrb, wfname));
-  mrb_ary_push(mrb, ary, mrb_str_new2(mrb, msg));
+  mrb_ary_push(mrb, ary, mrb_str_new_cstr(mrb, rfname));
+  mrb_ary_push(mrb, ary, mrb_str_new_cstr(mrb, wfname));
+  mrb_ary_push(mrb, ary, mrb_str_new_cstr(mrb, msg));
 
   fp = fopen(rfname, "w");
   if (fp == NULL) {
