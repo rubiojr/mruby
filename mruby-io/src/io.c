@@ -326,13 +326,11 @@ mrb_io_init(mrb_state *mrb, mrb_value io, mrb_value fnum, mrb_value mode)
   struct mrb_io *fptr;
   int fd, flags;
 
+  DATA_TYPE(io) = &mrb_io_type;
+  DATA_PTR(io)  = NULL;
+
   fd = mrb_fixnum(fnum);
   flags   = mrb_io_modestr_to_flags(mrb, mrb_string_value_cstr(mrb, &mode));
-
-  fptr = (struct mrb_io *)mrb_get_datatype(mrb, io, &mrb_io_type);
-  if (fptr) {
-    mrb_io_free(mrb, fptr);
-  }
 
   mrb_iv_set(mrb, io, mrb_intern(mrb, "@buf"), mrb_str_new_cstr(mrb, ""));
   mrb_iv_set(mrb, io, mrb_intern(mrb, "@pos"), mrb_fixnum_value(0));
@@ -341,8 +339,7 @@ mrb_io_init(mrb_state *mrb, mrb_value io, mrb_value fnum, mrb_value mode)
   fptr->fd    = fd;
   fptr->flags = flags;
 
-  DATA_PTR(io)  = fptr;
-  DATA_TYPE(io) = &mrb_io_type;
+  DATA_PTR(io) = fptr;
 
   return io;
 }
@@ -378,6 +375,24 @@ fptr_finalize(mrb_state *mrb, struct mrb_io *fptr, int noraise)
   if (!noraise && n != 0) {
     mrb_sys_fail(mrb, "fptr_finalize failed.");
   }
+}
+
+mrb_value
+mrb_io_s_bless(mrb_state *mrb, mrb_value klass)
+{
+  mrb_value io = mrb_nil_value();
+  mrb_get_args(mrb, "o", &io);
+
+  if (mrb_type(io) != MRB_TT_DATA) {
+    mrb_raise(mrb, E_TYPE_ERROR, "expected IO object");
+    return mrb_nil_value();
+  }
+
+  DATA_TYPE(io) = &mrb_io_type;
+  DATA_PTR(io)  = NULL;
+  DATA_PTR(io)  = mrb_io_alloc(mrb);
+
+  return io;
 }
 
 mrb_value
@@ -566,6 +581,7 @@ mrb_init_io(mrb_state *mrb)
 
   mrb_include_module(mrb, io, mrb_class_get(mrb, "Enumerable")); /* 15.2.20.3 */
 
+  mrb_define_class_method(mrb, io, "_bless",  mrb_io_s_bless,   ARGS_NONE());
   mrb_define_class_method(mrb, io, "sysopen", mrb_io_s_sysopen, ARGS_ANY());
   mrb_define_class_method(mrb, io, "_popen",  mrb_io_s_popen,   ARGS_ANY());
 

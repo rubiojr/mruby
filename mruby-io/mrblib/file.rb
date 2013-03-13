@@ -12,10 +12,11 @@ class File < IO
     if fd_or_path.kind_of? Fixnum
       super(fd_or_path, mode)
     else
+      IO._bless(self)
       @path = fd_or_path
 
       fd = IO.sysopen(@path, mode, perm)
-      if fd < 0
+      if fd < 0 && Object.const_defined?(:Errno)
         begin
           Errno.handle @path
         rescue Errno::EMFILE
@@ -23,6 +24,8 @@ class File < IO
           fd = IO.sysopen(@path, mode, perm)
           Errno.handle if fd < 0
         end
+      elsif fd < 0
+        raise NoFileError.new "no such file or directory"
       end
       super(fd, mode)
     end
