@@ -321,7 +321,7 @@ mrb_io_s_popen(mrb_state *mrb, mrb_value klass)
 }
 
 static mrb_value
-mrb_io_init(mrb_state *mrb, mrb_value io, mrb_value fnum, mrb_value mode)
+mrb_io_init(mrb_state *mrb, mrb_value io, mrb_value fnum, mrb_value mode, mrb_value opt)
 {
   struct mrb_io *fptr;
   int fd, flags;
@@ -347,13 +347,13 @@ mrb_io_init(mrb_state *mrb, mrb_value io, mrb_value fnum, mrb_value mode)
 mrb_value
 mrb_io_initialize(mrb_state *mrb, mrb_value io)
 {
-  mrb_value fnum, mode = mrb_nil_value();
+  mrb_value fnum, mode = mrb_nil_value(), opt = mrb_hash_new(mrb);
 
-  mrb_get_args(mrb, "i|S", &fnum, &mode);
+  mrb_get_args(mrb, "i|So", &fnum, &mode, &opt);
   if (mrb_nil_p(mode)) {
     mode = mrb_str_new_cstr(mrb, "r");
   }
-  return mrb_io_init(mrb, io, fnum, mode);
+  return mrb_io_init(mrb, io, fnum, mode, opt);
 }
 
 void
@@ -759,6 +759,14 @@ retry:
   return result;
 }
 
+mrb_value
+mrb_io_fileno(mrb_state *mrb, mrb_value io)
+{
+  struct mrb_io *fptr;
+  fptr = (struct mrb_io *)mrb_get_datatype(mrb, io, &mrb_io_type);
+  return mrb_fixnum_value(fptr->fd);
+}
+
 void
 mrb_init_io(mrb_state *mrb)
 {
@@ -782,6 +790,7 @@ mrb_init_io(mrb_state *mrb)
   mrb_define_method(mrb, io, "close",      mrb_io_close,       ARGS_NONE());   /* 15.2.20.5.1 */
   mrb_define_method(mrb, io, "closed?",    mrb_io_closed,      ARGS_NONE());   /* 15.2.20.5.2 */
   mrb_define_method(mrb, io, "pid",        mrb_io_pid,         ARGS_NONE());   /* 15.2.20.5.2 */
+  mrb_define_method(mrb, io, "fileno",     mrb_io_fileno,      ARGS_NONE());
 
   mrb_gv_set(mrb, mrb_intern(mrb, "$/"), mrb_str_new_cstr(mrb, "\n"));
 }
