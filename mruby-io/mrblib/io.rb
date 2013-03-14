@@ -332,4 +332,6 @@ class IO
     write sprintf(*args)
     nil
   end
+
+  alias_method :to_i, :fileno
 end

@@ -227,6 +227,15 @@ assert('IO.popen') do
   io.closed?
 end
 
+assert('IO#fileno') do
+  fd = IO.sysopen $mrbtest_io_rfname
+  io = IO.new fd
+  assert_equal io.fileno, fd
+  assert_equal io.to_i, fd
+  io.close
+  io.closed?
+end
+
 assert('IO TEST CLEANUP') do
   assert_nil MRubyIOTestUtil.io_test_cleanup
 end
