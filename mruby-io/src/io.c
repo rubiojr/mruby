@@ -321,7 +321,7 @@ mrb_io_s_popen(mrb_state *mrb, mrb_value klass)
 }
 
 static mrb_value
-mrb_io_init(mrb_state *mrb, mrb_value io, mrb_value fnum, mrb_value mode)
+mrb_io_init(mrb_state *mrb, mrb_value io, mrb_value fnum, mrb_value mode, mrb_value opt)
 {
   struct mrb_io *fptr;
   int fd, flags;
@@ -347,13 +347,13 @@ mrb_io_init(mrb_state *mrb, mrb_value io, mrb_value fnum, mrb_value mode)
 mrb_value
 mrb_io_initialize(mrb_state *mrb, mrb_value io)
 {
-  mrb_value fnum, mode = mrb_nil_value();
+  mrb_value fnum, mode = mrb_nil_value(), opt = mrb_hash_new(mrb);
 
-  mrb_get_args(mrb, "i|S", &fnum, &mode);
+  mrb_get_args(mrb, "i|So", &fnum, &mode, &opt);
   if (mrb_nil_p(mode)) {
     mode = mrb_str_new_cstr(mrb, "r");
   }
-  return mrb_io_init(mrb, io, fnum, mode);
+  return mrb_io_init(mrb, io, fnum, mode, opt);
 }
 
 void
