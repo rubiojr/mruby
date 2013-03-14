@@ -59,6 +59,7 @@ class IO
   end
 
   def eof?
+    # XXX: @buf のことを考えなくてよい？？
     ret = false
     char = ''
 
@@ -91,40 +92,14 @@ class IO
     0
   end
 
-  def _read(maxlen = BUF_SIZE)
-    raise ArgumentError unless maxlen.is_a?(Fixnum)
-    raise ArgumentError if maxlen < 0 || maxlen > BUF_SIZE
-    return '' if maxlen == 0
-
-    read_eof = nil
-    if BUF_SIZE > @buf.size
-      begin
-        @buf = sysread(BUF_SIZE - @buf.size)
-      rescue EOFError => e
-        read_eof = e
-      end
-    end
-
-    ret = nil
-    if @buf.size <= maxlen
-      ret = @buf
-      @buf = ''
-    else
-      ret = @buf[0, maxlen]
-      @buf = @buf[maxlen, @buf.size - maxlen]
-    end
-
-    if ret.empty? && read_eof
-      raise EOFError
-    end
-
-    @pos += ret.size
-
-    return ret
+  def _read_buf
+    return @buf if @buf && @buf.size > 0
+    @buf = sysread(BUF_SIZE)
   end
 
   def _ungets(substr)
     raise TypeError.new "expect String, got #{substr.class}" unless substr.is_a?(String)
+    raise IOError if @pos == 0 || @pos.nil?
     @pos -= substr.size
     if @buf.empty?
       @buf = substr
@@ -151,24 +126,23 @@ class IO
     str = ''
     while 1
       begin
-        buf = _read
+        _read_buf
       rescue EOFError => e
-        buf = nil
+        str = nil  if str.empty?
+        break
       end
 
-      if buf.nil?
-        str = nil if str.empty?
+      if length && (str.size + @buf.size) >= length
+        len = length - str.size
+        str += @buf[0, len]
+        @pos += len
+        @buf = @buf[len, @buf.size - len]
         break
       else
-        str += buf
+        str += @buf
+        @pos += @buf.size
+        @buf = ''
       end
-
-      break if length && str.size >= length
-    end
-
-    if length && str.size > length
-      _ungets(str[length, str.size-length])
-      str = str[0, length]
     end
 
     str
@@ -190,80 +164,40 @@ class IO
     end
 
     if rs == ""
-      return _readline_paragraph(limit)
+      rs = $/ + $/
     end
 
-    line = ""
+    str = ""
     while 1
       begin
-        buf = _read
+        _read_buf
       rescue EOFError => e
-        buf = nil
+        str = nil  if str.empty?
+        break
       end
 
-      if buf.nil?
-        line = nil if line.empty?
+      if limit && (str.size + @buf.size) >= limit
+        len = limit - str.size
+        str += @buf[0, len]
+        @pos += len
+        @buf = @buf[len, @buf.size - len]
         break
-      elsif idx = buf.index(rs)
-        line += buf[0, idx+1]
-        _ungets(buf[idx+1, buf.size - (idx+1)])
+      elsif idx = @buf.index(rs)
+        len = idx + rs.size
+        str += @buf[0, len]
+        @pos += len
+        @buf = @buf[len, @buf.size - len]
         break
       else
-        line += buf
+        str += @buf
+        @pos += @buf.size
+        @buf = ''
       end
-
-      break if limit && line && line.size >= limit
     end
 
-    raise EOFError.new "end of file reached" if line.nil?
+    raise EOFError.new "end of file reached" if str.nil?
 
-    if limit && line.size > limit
-      _ungets(line[limit, line.size-limit])
-      line = line[0, limit]
-    end
-
-    line
-  end
-
-  def _readline_paragraph(limit = nil)
-    line = ''
-    eof_raise = nil
-
-    while 1
-      begin
-        buf = readline
-      rescue EOFError => e
-        buf = nil
-        eof_raise = true
-      end
-
-      if buf.nil?
-        line = nil if line.empty?
-        break
-      else
-        line += buf
-      end
-
-      idx = line.rindex($/)
-      if idx > 0 && line[idx] == $/ && line[idx-1] == $/
-        if line.size > idx
-          _ungets(line[idx+1, line.size - (idx+1)])
-          line = line[0, idx+1]
-        end
-        break
-      end
-
-      break if limit && line && line.size >= limit
-    end
-
-    raise EOFError.new "end of file reached" if line.nil?
-
-    if limit && line.size > limit
-      _ungets(line[limit, line.size-limit])
-      line = line[0, limit]
-    end
-
-    line
+    str
   end
 
   def gets(*args)
@@ -275,7 +209,11 @@ class IO
   end
 
   def readchar
-    _read(1)
+    _read_buf
+    c = @buf[0]
+    @buf = @buf[1, @buf.size]
+    @pos += 1
+    c
   end
 
   def getc

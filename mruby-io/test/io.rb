@@ -60,7 +60,7 @@ assert('IO.sysopen, IO#syswrite') do
   io.closed?
 end
 
-assert('IO#_read') do
+assert('IO#_read_buf') do
   fd = IO.sysopen $mrbtest_io_rfname
   io = IO.new fd
   def io._buf
@@ -68,20 +68,16 @@ assert('IO#_read') do
   end
   msg_len = $mrbtest_io_msg.size + 1
   assert_equal '', io._buf
-  assert_equal '', io._read(0)
-  assert_equal '', io._buf
-  assert_equal 'mruby', io._read(5)
+  assert_equal $mrbtest_io_msg + "\n", io._read_buf
+  assert_equal $mrbtest_io_msg + "\n", io._buf
+  assert_equal 'mruby', io.read(5)
   assert_equal 5, io.pos
   assert_equal msg_len - 5, io._buf.size
-  assert_equal $mrbtest_io_msg[5,100] + "\n", io._read
+  assert_equal $mrbtest_io_msg[5,100] + "\n", io.read
   assert_equal 0, io._buf.size
   assert_raise EOFError do
-    io._read
+    io._read_buf
   end
-  assert_raise EOFError do
-    io._read(5)
-  end
-  assert_equal '', io._read(0)
   assert_equal true, io.eof
   assert_equal true, io.eof?
   io.close
