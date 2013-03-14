@@ -11,7 +11,7 @@ class IO
 
   BUF_SIZE = 4096
 
-  def for_fd(fd, mode = "r", opt = {})
+  def self.for_fd(fd, mode = "r", opt = {})
     self.new(fd, mode, opt)
   end
 
