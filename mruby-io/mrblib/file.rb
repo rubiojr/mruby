@@ -15,6 +15,7 @@ class File < IO
     else
       @path = fd_or_path
 
+      perm = 0666  unless perm.is_a? Fixnum
       fd = IO.sysopen(@path, mode, perm)
       if fd < 0 && Object.const_defined?(:Errno)
         begin

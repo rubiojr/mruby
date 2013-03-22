@@ -397,9 +397,9 @@ mrb_io_s_sysopen(mrb_state *mrb, mrb_value klass)
 {
   mrb_value path = mrb_nil_value();
   mrb_value mode = mrb_nil_value();
-  int fd, flags, perm = -1;
+  mrb_int fd, flags, perm = -1;
 
-  mrb_get_args(mrb, "S|Sb", &path, &mode, &perm);
+  mrb_get_args(mrb, "S|Si", &path, &mode, &perm);
   if (mrb_nil_p(mode)) {
     mode = mrb_str_new_cstr(mrb, "r");
   }
