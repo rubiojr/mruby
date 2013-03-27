@@ -6,7 +6,6 @@
 
 
 #include "mruby.h"
-#include <string.h>
 #include <stdio.h>
 #include <time.h>
 #include "mruby/class.h"
@@ -86,11 +85,6 @@ timegm(struct tm *tm)
 * on time_t. That means the resolution of time is only precise to the
 * second level. Also, there are only 2 timezones, namely UTC and LOCAL.
 */
-
-#ifndef mrb_bool_value
-#define mrb_bool_value(val) ((val) ? mrb_true_value() : mrb_false_value())
-#endif
-
 
 enum mrb_timezone {
   MRB_TIMEZONE_NONE   = 0,
@@ -242,8 +236,8 @@ mrb_time_at(mrb_state *mrb, mrb_value self)
 
 static struct mrb_time*
 time_mktime(mrb_state *mrb, mrb_int ayear, mrb_int amonth, mrb_int aday,
-	    mrb_int ahour, mrb_int amin, mrb_int asec, mrb_int ausec,
-	    enum mrb_timezone timezone)
+  mrb_int ahour, mrb_int amin, mrb_int asec, mrb_int ausec,
+  enum mrb_timezone timezone)
 {
   time_t nowsecs;
   struct tm nowtime = { 0 };
@@ -278,7 +272,7 @@ mrb_time_gm(mrb_state *mrb, mrb_value self)
   mrb_get_args(mrb, "i|iiiiii",
                 &ayear, &amonth, &aday, &ahour, &amin, &asec, &ausec);
   return mrb_time_wrap(mrb, mrb_class_ptr(self),
-		       time_mktime(mrb, ayear, amonth, aday, ahour, amin, asec, ausec, MRB_TIMEZONE_UTC));
+          time_mktime(mrb, ayear, amonth, aday, ahour, amin, asec, ausec, MRB_TIMEZONE_UTC));
 }
 
 
@@ -292,7 +286,7 @@ mrb_time_local(mrb_state *mrb, mrb_value self)
   mrb_get_args(mrb, "i|iiiiii",
                 &ayear, &amonth, &aday, &ahour, &amin, &asec, &ausec);
   return mrb_time_wrap(mrb, mrb_class_ptr(self),
-		       time_mktime(mrb, ayear, amonth, aday, ahour, amin, asec, ausec, MRB_TIMEZONE_LOCAL));
+          time_mktime(mrb, ayear, amonth, aday, ahour, amin, asec, ausec, MRB_TIMEZONE_LOCAL));
 }
 
 
@@ -301,15 +295,14 @@ mrb_time_eq(mrb_state *mrb, mrb_value self)
 {
   mrb_value other;
   struct mrb_time *tm1, *tm2;
+  mrb_bool eq_p;
 
   mrb_get_args(mrb, "o", &other);
   tm1 = (struct mrb_time *)mrb_get_datatype(mrb, self, &mrb_time_type);
   tm2 = (struct mrb_time *)mrb_get_datatype(mrb, other, &mrb_time_type);
-  if (!tm1 || !tm2) return mrb_false_value();
-  if (tm1->sec == tm2->sec && tm1->usec == tm2->usec) {
-    return mrb_true_value();
-  }
-  return mrb_false_value();
+  eq_p = tm1 && tm2 && tm1->sec == tm2->sec && tm1->usec == tm2->usec;
+
+  return mrb_bool_value(eq_p);
 }
 
 static mrb_value
@@ -437,10 +430,10 @@ mrb_time_asctime(mrb_state *mrb, mrb_value self)
   if (!tm) return mrb_nil_value();
   d = &tm->datetime;
   len = snprintf(buf, sizeof(buf), "%s %s %02d %02d:%02d:%02d %s%d",
-		 wday_names[d->tm_wday], mon_names[d->tm_mon], d->tm_mday,
-		 d->tm_hour, d->tm_min, d->tm_sec,
-		 tm->timezone == MRB_TIMEZONE_UTC ? "UTC " : "",
-		 d->tm_year + 1900);
+  wday_names[d->tm_wday], mon_names[d->tm_mon], d->tm_mday,
+  d->tm_hour, d->tm_min, d->tm_sec,
+  tm->timezone == MRB_TIMEZONE_UTC ? "UTC " : "",
+  d->tm_year + 1900);
   return mrb_str_new(mrb, buf, len);
 }
 
@@ -528,9 +521,11 @@ mrb_time_initialize(mrb_state *mrb, mrb_value self)
   if (tm) {
     mrb_time_free(mrb, tm);
   }
+  DATA_TYPE(self) = &mrb_time_type;
+  DATA_PTR(self) = NULL;
 
   n = mrb_get_args(mrb, "|iiiiiii",
-		   &ayear, &amonth, &aday, &ahour, &amin, &asec, &ausec);
+       &ayear, &amonth, &aday, &ahour, &amin, &asec, &ausec);
   if (n == 0) {
     tm = current_mrb_time(mrb);
   }
@@ -538,7 +533,6 @@ mrb_time_initialize(mrb_state *mrb, mrb_value self)
     tm = time_mktime(mrb, ayear, amonth, aday, ahour, amin, asec, ausec, MRB_TIMEZONE_LOCAL);
   }
   DATA_PTR(self) = tm;
-  DATA_TYPE(self) = &mrb_time_type;
   return self;
 }
 

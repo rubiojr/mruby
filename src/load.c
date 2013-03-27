@@ -4,6 +4,7 @@
 ** See Copyright Notice in mruby.h
 */
 
+#include <stdlib.h>
 #include <string.h>
 #include "mruby/dump.h"
 
@@ -683,7 +684,7 @@ static void
 irep_error(mrb_state *mrb, int n)
 {
   static const char msg[] = "irep load error";
-  mrb->exc = (struct RObject*)mrb_object(mrb_exc_new(mrb, E_SCRIPT_ERROR, msg, sizeof(msg) - 1));
+  mrb->exc = mrb_obj_ptr(mrb_exc_new(mrb, E_SCRIPT_ERROR, msg, sizeof(msg) - 1));
 }
 
 #ifdef ENABLE_STDIO

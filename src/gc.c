@@ -197,7 +197,7 @@ struct heap_page {
   struct heap_page *next;
   struct heap_page *free_next;
   struct heap_page *free_prev;
-  unsigned int old:1;
+  mrb_bool old:1;
   RVALUE objects[MRB_HEAP_PAGE_SIZE];
 };
 
@@ -322,7 +322,7 @@ void
 mrb_gc_protect(mrb_state *mrb, mrb_value obj)
 {
   if (mrb_special_const_p(obj)) return;
-  gc_protect(mrb, mrb_basic(obj));
+  gc_protect(mrb, mrb_basic_ptr(obj));
 }
 
 struct RBasic*
@@ -542,7 +542,9 @@ obj_free(mrb_state *mrb, struct RBasic *obj)
 static void
 root_scan_phase(mrb_state *mrb)
 {
-  int i, j, e;
+  int j;
+  size_t i;
+  size_t e;
   mrb_callinfo *ci;
 
   if (!is_minor_gc(mrb)) {
@@ -557,6 +559,8 @@ root_scan_phase(mrb_state *mrb)
   }
   /* mark class hierarchy */
   mrb_gc_mark(mrb, (struct RBasic*)mrb->object_class);
+  /* mark top_self */
+  mrb_gc_mark(mrb, (struct RBasic*)mrb->top_self);
   /* mark exception */
   mrb_gc_mark(mrb, (struct RBasic*)mrb->exc);
   /* mark stack */
@@ -982,8 +986,8 @@ gc_enable(mrb_state *mrb, mrb_value obj)
   int old = mrb->gc_disabled;
 
   mrb->gc_disabled = FALSE;
-  if (old) return mrb_true_value();
-  return mrb_false_value();
+
+  return mrb_bool_value(old);
 }
 
 /*
@@ -1004,8 +1008,8 @@ gc_disable(mrb_state *mrb, mrb_value obj)
   int old = mrb->gc_disabled;
 
   mrb->gc_disabled = TRUE;
-  if (old) return mrb_true_value();
-  return mrb_false_value();
+
+  return mrb_bool_value(old);
 }
 
 /*
@@ -1101,10 +1105,7 @@ change_gen_gc_mode(mrb_state *mrb, mrb_int enable)
 static mrb_value
 gc_generational_mode_get(mrb_state *mrb, mrb_value self)
 {
-  if (mrb->is_generational_gc_mode)
-    return mrb_true_value();
-  else
-    return mrb_false_value();
+  return mrb_bool_value(mrb->is_generational_gc_mode);
 }
 
 /*
@@ -1124,10 +1125,7 @@ gc_generational_mode_set(mrb_state *mrb, mrb_value self)
   if (mrb->is_generational_gc_mode != enable)
     change_gen_gc_mode(mrb, enable);
 
-  if (enable)
-    return mrb_true_value();
-  else
-    return mrb_false_value();
+  return mrb_bool_value(enable);
 }
 
 #ifdef GC_TEST
@@ -1168,8 +1166,8 @@ test_mrb_field_write_barrier(void)
 
   puts("test_mrb_field_write_barrier");
   mrb->is_generational_gc_mode = FALSE;
-  obj = mrb_basic(mrb_ary_new(mrb));
-  value = mrb_basic(mrb_str_new_cstr(mrb, "value"));
+  obj = mrb_basic_ptr(mrb_ary_new(mrb));
+  value = mrb_basic_ptr(mrb_str_new_cstr(mrb, "value"));
   paint_black(obj);
   paint_partial_white(mrb,value);
 
@@ -1210,15 +1208,15 @@ test_mrb_field_write_barrier(void)
 
   {
     puts("test_mrb_field_write_barrier_value");
-    obj = mrb_basic(mrb_ary_new(mrb));
+    obj = mrb_basic_ptr(mrb_ary_new(mrb));
     mrb_value value = mrb_str_new_cstr(mrb, "value");
     paint_black(obj);
-    paint_partial_white(mrb, mrb_basic(value));
+    paint_partial_white(mrb, mrb_basic_ptr(value));
 
     mrb->gc_state = GC_STATE_MARK;
     mrb_field_write_barrier_value(mrb, obj, value);
 
-    gc_assert(is_gray(mrb_basic(value)));
+    gc_assert(is_gray(mrb_basic_ptr(value)));
   }
 
   mrb_close(mrb);
@@ -1231,7 +1229,7 @@ test_mrb_write_barrier(void)
   struct RBasic *obj;
 
   puts("test_mrb_write_barrier");
-  obj = mrb_basic(mrb_ary_new(mrb));
+  obj = mrb_basic_ptr(mrb_ary_new(mrb));
   paint_black(obj);
 
   puts("  in GC_STATE_MARK");
@@ -1260,12 +1258,12 @@ test_add_gray_list(void)
   puts("test_add_gray_list");
   change_gen_gc_mode(mrb, FALSE);
   gc_assert(mrb->gray_list == NULL);
-  obj1 = mrb_basic(mrb_str_new_cstr(mrb, "test"));
+  obj1 = mrb_basic_ptr(mrb_str_new_cstr(mrb, "test"));
   add_gray_list(mrb, obj1);
   gc_assert(mrb->gray_list == obj1);
   gc_assert(is_gray(obj1));
 
-  obj2 = mrb_basic(mrb_str_new_cstr(mrb, "test"));
+  obj2 = mrb_basic_ptr(mrb_str_new_cstr(mrb, "test"));
   add_gray_list(mrb, obj2);
   gc_assert(mrb->gray_list == obj2);
   gc_assert(mrb->gray_list->gcnext == obj1);
@@ -1294,12 +1292,12 @@ test_gc_gray_mark(void)
   puts("  in MRB_TT_ARRAY");
   obj_v = mrb_ary_new(mrb);
   value_v = mrb_str_new_cstr(mrb, "test");
-  paint_gray(mrb_basic(obj_v));
-  paint_partial_white(mrb, mrb_basic(value_v));
+  paint_gray(mrb_basic_ptr(obj_v));
+  paint_partial_white(mrb, mrb_basic_ptr(value_v));
   mrb_ary_push(mrb, obj_v, value_v);
-  gray_num = gc_gray_mark(mrb, mrb_basic(obj_v));
-  gc_assert(is_black(mrb_basic(obj_v)));
-  gc_assert(is_gray(mrb_basic(value_v)));
+  gray_num = gc_gray_mark(mrb, mrb_basic_ptr(obj_v));
+  gc_assert(is_black(mrb_basic_ptr(obj_v)));
+  gc_assert(is_gray(mrb_basic_ptr(value_v)));
   gc_assert(gray_num == 1);
 
   mrb_close(mrb);

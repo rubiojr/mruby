@@ -6,6 +6,7 @@
 #include "mruby/dump.h"
 #include "mruby/variable.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #ifndef ENABLE_STDIO
@@ -26,10 +27,10 @@ void mrb_show_copyright(mrb_state *);
 struct _args {
   FILE *rfp;
   char* cmdline;
-  int fname        : 1;
-  int mrbfile      : 1;
-  int check_syntax : 1;
-  int verbose      : 1;
+  mrb_bool fname        : 1;
+  mrb_bool mrbfile      : 1;
+  mrb_bool check_syntax : 1;
+  mrb_bool verbose      : 1;
   int argc;
   char** argv;
 };
