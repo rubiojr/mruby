@@ -393,6 +393,35 @@ mrb_io_bless(mrb_state *mrb, mrb_value io)
 }
 
 mrb_value
+mrb_io_s_for_fd(mrb_state *mrb, mrb_value klass)
+{
+  struct mrb_io *fptr;
+  mrb_value io, mode, opt;
+  mrb_int fd, flags;
+
+  mode = opt = mrb_nil_value();
+  mrb_get_args(mrb, "i|So", &fd, &mode, &opt);
+  if (mrb_nil_p(mode)) {
+    mode = mrb_str_new_cstr(mrb, "r");
+  }
+  if (mrb_nil_p(opt)) {
+    opt = mrb_hash_new(mrb);
+  }
+
+  io = mrb_obj_value(mrb_data_object_alloc(mrb, mrb_class_ptr(klass), NULL, &mrb_io_type));
+
+  flags   = mrb_io_modestr_to_flags(mrb, mrb_string_value_cstr(mrb, &mode));
+  mrb_iv_set(mrb, io, mrb_intern(mrb, "@buf"), mrb_str_new_cstr(mrb, ""));
+  mrb_iv_set(mrb, io, mrb_intern(mrb, "@pos"), mrb_fixnum_value(0));
+  fptr        = mrb_io_alloc(mrb);
+  fptr->fd    = fd;
+  fptr->flags = flags;
+  DATA_PTR(io) = fptr;
+
+  return io;
+}
+
+mrb_value
 mrb_io_s_sysopen(mrb_state *mrb, mrb_value klass)
 {
   mrb_value path = mrb_nil_value();
@@ -774,8 +803,9 @@ mrb_init_io(mrb_state *mrb)
 
   mrb_include_module(mrb, io, mrb_class_get(mrb, "Enumerable")); /* 15.2.20.3 */
 
-  mrb_define_class_method(mrb, io, "sysopen", mrb_io_s_sysopen, ARGS_ANY());
   mrb_define_class_method(mrb, io, "_popen",  mrb_io_s_popen,   ARGS_ANY());
+  mrb_define_class_method(mrb, io, "for_fd",  mrb_io_s_for_fd,  ARGS_REQ(1)|ARGS_OPT(2));
+  mrb_define_class_method(mrb, io, "sysopen", mrb_io_s_sysopen, ARGS_ANY());
 
   mrb_define_method(mrb, io, "_bless",     mrb_io_bless,       ARGS_NONE());
   mrb_define_method(mrb, io, "initialize", mrb_io_initialize,  ARGS_ANY());    /* 15.2.20.5.21 (x)*/
