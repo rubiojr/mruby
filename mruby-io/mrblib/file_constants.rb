@@ -1,10 +1,5 @@
 class File
   module Constants
-    LOCK_SH = 1
-    LOCK_EX = 2
-    LOCK_NB = 4
-    LOCK_UN = 8
-
     NULL = "/dev/null"
 
     RDONLY   = 0
@@ -29,4 +24,8 @@ class File
     FNM_DOTMATCH = 4
     FNM_CASEFOLD = 8
   end
+end
+
+class File
+  include File::Constants
 end

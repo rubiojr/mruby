@@ -11,6 +11,7 @@
 #include "error.h"
 
 #include <sys/file.h>
+#include <fcntl.h>
 #include <libgen.h>
 #include <limits.h>
 #include <stdlib.h>
@@ -267,7 +268,7 @@ mrb_file__gethome(mrb_state *mrb, mrb_value klass)
 void
 mrb_init_file(mrb_state *mrb)
 {
-  struct RClass *io, *file;
+  struct RClass *io, *file, *cnst;
 
   io   = mrb_class_obj_get(mrb, "IO");
   file = mrb_define_class(mrb, "File", io);
@@ -284,10 +285,10 @@ mrb_init_file(mrb_state *mrb)
   mrb_define_class_method(mrb, file, "_getwd", mrb_file__getwd, ARGS_NONE());
   mrb_define_class_method(mrb, file, "_gethome", mrb_file__gethome, ARGS_OPT(1));
 
-  mrb_define_const(mrb, file, "LOCK_SH", mrb_fixnum_value(LOCK_SH));
-  mrb_define_const(mrb, file, "LOCK_EX", mrb_fixnum_value(LOCK_EX));
-  mrb_define_const(mrb, file, "LOCK_UN", mrb_fixnum_value(LOCK_UN));
-  mrb_define_const(mrb, file, "LOCK_NB", mrb_fixnum_value(LOCK_NB));
-  mrb_define_const(mrb, file, "SEPARATOR", mrb_str_new_cstr(mrb, FILE_SEPARATOR));
-
+  cnst = mrb_define_module_under(mrb, file, "Constants");
+  mrb_define_const(mrb, cnst, "LOCK_SH", mrb_fixnum_value(LOCK_SH));
+  mrb_define_const(mrb, cnst, "LOCK_EX", mrb_fixnum_value(LOCK_EX));
+  mrb_define_const(mrb, cnst, "LOCK_UN", mrb_fixnum_value(LOCK_UN));
+  mrb_define_const(mrb, cnst, "LOCK_NB", mrb_fixnum_value(LOCK_NB));
+  mrb_define_const(mrb, cnst, "SEPARATOR", mrb_str_new_cstr(mrb, FILE_SEPARATOR));
 }
