@@ -149,7 +149,7 @@ mrb_io_free(mrb_state *mrb, void *ptr)
 {
   struct mrb_io *io = (struct mrb_io *)ptr;
   if (io != NULL) {
-    fptr_finalize(mrb, io, FALSE);
+    fptr_finalize(mrb, io, TRUE);
     mrb_free(mrb, io);
   }
 }
@@ -163,23 +163,10 @@ mrb_io_alloc(mrb_state *mrb)
 
   fptr = (struct mrb_io *)mrb_malloc(mrb, sizeof(struct mrb_io));
   fptr->fd       = -1;
+  fptr->fd2      = -1;
   fptr->pid      = 0;
-  fptr->lineno   = 0;
-  fptr->finalize = 0;
 
   return fptr;
-}
-
-static mrb_value
-mrb_io_wrap(mrb_state *mrb, struct RClass *c, struct mrb_io *io)
-{
-  return mrb_obj_value(Data_Wrap_Struct(mrb, c, &mrb_io_type, io));
-}
-
-static mrb_value
-mrb_io_make(mrb_state *mrb, struct RClass *c)
-{
-  return mrb_io_wrap(mrb, c, mrb_io_alloc(mrb));
 }
 
 static int
@@ -199,13 +186,20 @@ io_open(mrb_state *mrb, mrb_value path, int flags, int perm)
 #endif
 
 mrb_value
-mrb_io_popen_init(mrb_state *mrb, mrb_value io, mrb_value cmd, mrb_value mode, mrb_value opt)
+mrb_io_s_popen(mrb_state *mrb, mrb_value klass)
 {
+  mrb_value cmd, io;
+  mrb_value mode = mrb_str_new_cstr(mrb, "r");
+  mrb_value opt  = mrb_hash_new(mrb);
+
   struct mrb_io *fptr;
   const char *pname;
-  int pid, flags, fd, write_fd;
+  int pid, flags, fd, write_fd = -1;
   int pr[2], pw[2];
   int doexec;
+
+  mrb_get_args(mrb, "S|SH", &cmd, &mode, &opt);
+  io = mrb_obj_value(mrb_data_object_alloc(mrb, mrb_class_ptr(klass), NULL, &mrb_io_type));
 
   pname = mrb_string_value_cstr(mrb, &cmd);
   flags = mrb_io_modestr_to_flags(mrb, mrb_string_value_cstr(mrb, &mode));
@@ -268,7 +262,6 @@ retry:
 
         errno = e;
         mrb_sys_fail(mrb, "pipe_open failed.");
-        return mrb_nil_value();
       }
       break;
     default: /* parent */
@@ -297,9 +290,8 @@ retry:
         fptr->fd2  = write_fd;
         fptr->pid  = pid;
 
-
-        DATA_PTR(io)  = fptr;
         DATA_TYPE(io) = &mrb_io_type;
+        DATA_PTR(io)  = fptr;
         return io;
       }
   }
@@ -308,52 +300,39 @@ retry:
 }
 
 mrb_value
-mrb_io_s_popen(mrb_state *mrb, mrb_value klass)
-{
-  mrb_value cmd, io;
-  mrb_value mode = mrb_str_new_cstr(mrb, "r");
-  mrb_value opt  = mrb_hash_new(mrb);
-
-  mrb_get_args(mrb, "S|SH", &cmd, &mode, &opt);
-  io = mrb_io_make(mrb, mrb_class_ptr(klass));
-
-  return mrb_io_popen_init(mrb, io, cmd, mode, opt);
-}
-
-static mrb_value
-mrb_io_init(mrb_state *mrb, mrb_value io, mrb_value fnum, mrb_value mode, mrb_value opt)
+mrb_io_initialize(mrb_state *mrb, mrb_value io)
 {
   struct mrb_io *fptr;
-  int fd, flags;
+  mrb_int fd, flags;
+  mrb_value mode, opt;
 
   DATA_TYPE(io) = &mrb_io_type;
   DATA_PTR(io)  = NULL;
 
-  fd = mrb_fixnum(fnum);
+  mode = opt = mrb_nil_value();
+
+  mrb_get_args(mrb, "i|So", &fd, &mode, &opt);
+  if (mrb_nil_p(mode)) {
+    mode = mrb_str_new_cstr(mrb, "r");
+  }
+  if (mrb_nil_p(opt)) {
+    opt = mrb_hash_new(mrb);
+  }
+
   flags   = mrb_io_modestr_to_flags(mrb, mrb_string_value_cstr(mrb, &mode));
 
   mrb_iv_set(mrb, io, mrb_intern(mrb, "@buf"), mrb_str_new_cstr(mrb, ""));
   mrb_iv_set(mrb, io, mrb_intern(mrb, "@pos"), mrb_fixnum_value(0));
 
-  fptr        = mrb_io_alloc(mrb);
+  fptr = DATA_PTR(io);
+  if (fptr == NULL) {
+    fptr = mrb_io_alloc(mrb);
+  }
   fptr->fd    = fd;
-  fptr->flags = flags;
 
   DATA_PTR(io) = fptr;
 
   return io;
-}
-
-mrb_value
-mrb_io_initialize(mrb_state *mrb, mrb_value io)
-{
-  mrb_value fnum, mode = mrb_nil_value(), opt = mrb_hash_new(mrb);
-
-  mrb_get_args(mrb, "i|So", &fnum, &mode, &opt);
-  if (mrb_nil_p(mode)) {
-    mode = mrb_str_new_cstr(mrb, "r");
-  }
-  return mrb_io_init(mrb, io, fnum, mode, opt);
 }
 
 void
@@ -369,6 +348,12 @@ fptr_finalize(mrb_state *mrb, struct mrb_io *fptr, int noraise)
     n = close(fptr->fd);
     if (n == 0) {
       fptr->fd = -1;
+    }
+  }
+  if (fptr->fd2 > 2) {
+    n = close(fptr->fd2);
+    if (n == 0) {
+      fptr->fd2 = -1;
     }
   }
 
@@ -395,30 +380,9 @@ mrb_io_bless(mrb_state *mrb, mrb_value io)
 mrb_value
 mrb_io_s_for_fd(mrb_state *mrb, mrb_value klass)
 {
-  struct mrb_io *fptr;
-  mrb_value io, mode, opt;
-  mrb_int fd, flags;
+  mrb_value io = mrb_obj_value(mrb_data_object_alloc(mrb, mrb_class_ptr(klass), NULL, &mrb_io_type));
 
-  mode = opt = mrb_nil_value();
-  mrb_get_args(mrb, "i|So", &fd, &mode, &opt);
-  if (mrb_nil_p(mode)) {
-    mode = mrb_str_new_cstr(mrb, "r");
-  }
-  if (mrb_nil_p(opt)) {
-    opt = mrb_hash_new(mrb);
-  }
-
-  io = mrb_obj_value(mrb_data_object_alloc(mrb, mrb_class_ptr(klass), NULL, &mrb_io_type));
-
-  flags   = mrb_io_modestr_to_flags(mrb, mrb_string_value_cstr(mrb, &mode));
-  mrb_iv_set(mrb, io, mrb_intern(mrb, "@buf"), mrb_str_new_cstr(mrb, ""));
-  mrb_iv_set(mrb, io, mrb_intern(mrb, "@pos"), mrb_fixnum_value(0));
-  fptr        = mrb_io_alloc(mrb);
-  fptr->fd    = fd;
-  fptr->flags = flags;
-  DATA_PTR(io) = fptr;
-
-  return io;
+  return mrb_io_initialize(mrb, io);
 }
 
 mrb_value
@@ -525,36 +489,6 @@ mrb_io_syswrite(mrb_state *mrb, mrb_value io)
   length = write(fptr->fd, RSTRING_PTR(buf), RSTRING_LEN(buf));
 
   return mrb_fixnum_value(length);
-}
-
-mrb_value
-mrb_io_sync(mrb_state *mrb, mrb_value io)
-{
-  struct mrb_io *fptr;
-  fptr = (struct mrb_io *)mrb_get_datatype(mrb, io, &mrb_io_type);
-
-  if (fptr->flags & FMODE_SYNC) {
-    return mrb_true_value();
-  }
-
-  return mrb_false_value();
-}
-
-mrb_value
-mrb_io_set_sync(mrb_state *mrb, mrb_value io)
-{
-  mrb_value mode;
-  struct mrb_io *fptr;
-  fptr = (struct mrb_io *)mrb_get_datatype(mrb, io, &mrb_io_type);
-
-  mrb_get_args(mrb, "o", &mode);
-  if (mrb_test(mode)) {
-    fptr->flags |= FMODE_SYNC;
-  } else {
-    fptr->flags &= ~FMODE_SYNC;
-  }
-
-  return mode;
 }
 
 mrb_value
@@ -812,8 +746,6 @@ mrb_init_io(mrb_state *mrb)
   mrb_define_method(mrb, io, "sysread",    mrb_io_sysread,     ARGS_ANY());
   mrb_define_method(mrb, io, "sysseek",    mrb_io_sysseek,     ARGS_REQ(1));
   mrb_define_method(mrb, io, "syswrite",   mrb_io_syswrite,    ARGS_REQ(1));
-  mrb_define_method(mrb, io, "sync",       mrb_io_sync,        ARGS_NONE());   /* 15.2.20.5.18 */
-  mrb_define_method(mrb, io, "sync=",      mrb_io_set_sync,    ARGS_REQ(1));   /* 15.2.20.5.19 */
   mrb_define_method(mrb, io, "close",      mrb_io_close,       ARGS_NONE());   /* 15.2.20.5.1 */
   mrb_define_method(mrb, io, "closed?",    mrb_io_closed,      ARGS_NONE());   /* 15.2.20.5.2 */
   mrb_define_method(mrb, io, "pid",        mrb_io_pid,         ARGS_NONE());   /* 15.2.20.5.2 */

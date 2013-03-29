@@ -24,10 +24,7 @@ extern "C" {
 struct mrb_io {
   int fd;                                 /* file descriptor          */
   int fd2;                                /* file descriptor          */
-  int flags;                              /* mode flags: FMODE_XXXXs  */
   int pid;                                /* child's pid (for pipes)  */
-  int lineno;                             /* number of lines read     */
-  void (*finalize)(struct mrb_io *, int); /* finalize proc            */
 };
 
 struct mrb_io_type {
