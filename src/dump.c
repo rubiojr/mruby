@@ -411,7 +411,7 @@ write_rite_binary_header(mrb_state *mrb, size_t binary_size, uint8_t* bin)
 }
 
 static int
-mrb_dump_irep(mrb_state *mrb, size_t start_index, int debug_info, uint8_t **bin, size_t *bin_size)
+mrb_dump_irep_record(mrb_state *mrb, size_t start_index, int debug_info, uint8_t **bin, size_t *bin_size)
 {
   int result = MRB_DUMP_GENERAL_FAILURE;
   size_t section_size = 0;
@@ -476,6 +476,26 @@ error_exit:
   return result;
 }
 
+int
+mrb_dump_irep(mrb_state *mrb, size_t start_index, int debug_info, uint8_t *bin, size_t *bin_size0)
+{
+  int result;
+  size_t bin_size = 0;
+
+  result = mrb_dump_irep_record(mrb, start_index, debug_info, &bin, &bin_size);
+  if (result != MRB_DUMP_OK && bin != NULL) {
+    mrb_free(mrb, bin);
+  }
+  *bin_size0 = bin_size;
+
+  {
+    FILE *fp = fopen("a", "w");
+    fwrite(bin, bin_size, 1, fp);
+    fclose(fp);
+  }
+
+  return result;
+}
 
 #ifdef ENABLE_STDIO
 
@@ -490,7 +510,7 @@ mrb_dump_irep_binary(mrb_state *mrb, size_t start_index, int debug_info, FILE* f
     return MRB_DUMP_INVALID_ARGUMENT;
   }
 
-  result = mrb_dump_irep(mrb, start_index, debug_info, &bin, &bin_size);
+  result = mrb_dump_irep_record(mrb, start_index, debug_info, &bin, &bin_size);
   if (result == MRB_DUMP_OK) {
     fwrite(bin, bin_size, 1, fp);
   }
@@ -510,7 +530,7 @@ mrb_dump_irep_cfunc(mrb_state *mrb, size_t start_index, int debug_info, FILE *fp
     return MRB_DUMP_INVALID_ARGUMENT;
   }
 
-  result = mrb_dump_irep(mrb, start_index, debug_info, &bin, &bin_size);
+  result = mrb_dump_irep_record(mrb, start_index, debug_info, &bin, &bin_size);
   if (result == MRB_DUMP_OK) {
     fprintf(fp, "const uint8_t %s[] = {", initname);
     while (bin_idx < bin_size) {

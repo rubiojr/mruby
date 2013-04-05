@@ -19,6 +19,7 @@ int mrb_dump_irep_cfunc(mrb_state *mrb, size_t n, int, FILE *f, const char *init
 int32_t mrb_read_irep_file(mrb_state*, FILE*);
 #endif
 int32_t mrb_read_irep(mrb_state*, const uint8_t*);
+int mrb_dump_irep(mrb_state*, size_t, int, uint8_t*, size_t*);
 
 #ifdef ENABLE_STDIO
 mrb_value mrb_load_irep_file(mrb_state*,FILE*);

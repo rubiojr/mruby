@@ -47,6 +47,8 @@ MRuby::Build.new do |conf|
   # No use eval method
   # conf.gem "#{root}/mrbgems/mruby-eval"
 
+  conf.gem :github => 'iij/mruby-io'
+  conf.gem "#{root}/mruby-require"
 
   # Generate binaries
   # conf.bins = %w(mrbc mruby mirb)
