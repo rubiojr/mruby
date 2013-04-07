@@ -48,6 +48,8 @@ MRuby::Build.new do |conf|
   # conf.gem "#{root}/mrbgems/mruby-eval"
 
   conf.gem :github => 'iij/mruby-io'
+  conf.gem :github => 'iij/mruby-dir'
+  conf.gem :github => 'iij/mruby-tempfile'
   conf.gem "#{root}/mruby-require"
 
   # Generate binaries
