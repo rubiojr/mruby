@@ -20,6 +20,7 @@
 #include "mruby/numeric.h"
 #include "mruby/range.h"
 #include "mruby/string.h"
+#include "mruby/variable.h"
 #include "re.h"
 
 const char mrb_digitmap[] = "0123456789abcdefghijklmnopqrstuvwxyz";
