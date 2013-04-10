@@ -12,6 +12,10 @@ class String
   def relative_path_from(dir)
     Pathname.new(File.expand_path(self)).relative_path_from(Pathname.new(File.expand_path(dir))).to_s
   end
+
+  def relative_path
+    relative_path_from(Dir.pwd)
+  end
   
   # Compatible with 1.9 on 1.8
   def %(params)
@@ -41,7 +45,7 @@ end
 $pp_show = true
 
 if $verbose.nil?
-  unless Rake.verbose.nil?
+  if Rake.respond_to?(:verbose) && !Rake.verbose.nil?
     if Rake.verbose.class == TrueClass
       # verbose message logging
       $pp_show = false

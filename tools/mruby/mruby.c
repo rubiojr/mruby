@@ -6,6 +6,7 @@
 #include "mruby/dump.h"
 #include "mruby/variable.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #ifdef ENABLE_REQUIRE
@@ -30,11 +31,18 @@ void mrb_show_copyright(mrb_state *);
 struct _args {
   FILE *rfp;
   char* cmdline;
+<<<<<<< HEAD
   int fname        : 1;
   int mrbfile      : 1;
   int check_syntax : 1;
   int verbose      : 1;
   int safetrace    : 1;
+=======
+  mrb_bool fname        : 1;
+  mrb_bool mrbfile      : 1;
+  mrb_bool check_syntax : 1;
+  mrb_bool verbose      : 1;
+>>>>>>> master
   int argc;
   char** argv;
 #ifdef ENABLE_REQUIRE
@@ -68,7 +76,7 @@ usage(const char *name)
 
   printf("Usage: %s [switches] programfile\n", name);
   while(*p)
-  printf("  %s\n", *p++);
+    printf("  %s\n", *p++);
 }
 
 static int
@@ -120,7 +128,7 @@ append_cmdline:
       }
       else {
         printf("%s: No code specified for -e\n", *origargv);
-        return 0;
+        return EXIT_SUCCESS;
       }
       break;
 #ifdef ENABLE_REQUIRE
@@ -150,7 +158,7 @@ append_cmdline:
       break;
 #endif /* ENABLE_REQUIRE */
     case 'v':
-      mrb_show_version(mrb);
+      if (!args->verbose) mrb_show_version(mrb);
       args->verbose = 1;
       break;
     case '-':
@@ -160,7 +168,7 @@ append_cmdline:
       }
       else if (strcmp((*argv) + 2, "version") == 0) {
         mrb_show_version(mrb);
-        exit(0);
+        exit(EXIT_SUCCESS);
       }
       else if (strcmp((*argv) + 2, "verbose") == 0) {
         args->verbose = 1;
@@ -168,12 +176,10 @@ append_cmdline:
       }
       else if (strcmp((*argv) + 2, "copyright") == 0) {
         mrb_show_copyright(mrb);
-        exit(0);
+        exit(EXIT_SUCCESS);
       }
-      else return -3;
-      return 0;
     default:
-      return -4;
+      return EXIT_FAILURE;
     }
   }
 
@@ -194,7 +200,7 @@ append_cmdline:
   memcpy(args->argv, argv, (argc+1) * sizeof(char*));
   args->argc = argc;
 
-  return 0;
+  return EXIT_SUCCESS;
 }
 
 static void
@@ -301,14 +307,23 @@ showcallinfo(mrb_state *mrb, int safe)
       if (irep->filename != NULL)
         filename = irep->filename;
       if (irep->lines != NULL) {
-	mrb_code *pc;
+        mrb_code *pc;
 
+<<<<<<< HEAD
 	if (i+1 <= ciidx) {
 	  pc = cibase[i+1].pc;
 	}
 	else {
 	  pc = (mrb_code*)mrb_voidp(mrb_obj_iv_get(mrb, mrb->exc, mrb_intern(mrb, "lastpc")));
 	}
+=======
+        if (i+1 <= ciidx) {
+          pc = mrb->cibase[i+1].pc;
+        }
+        else {
+          pc = (mrb_code*)mrb_voidp(mrb_obj_iv_get(mrb, mrb->exc, mrb_intern(mrb, "lastpc")));
+        }
+>>>>>>> master
         if (irep->iseq <= pc && pc < irep->iseq + irep->ilen) {
           line = irep->lines[pc - irep->iseq - 1];
         }
@@ -323,6 +338,7 @@ showcallinfo(mrb_state *mrb, int safe)
     method = mrb_sym2name(mrb, ci->mid);
     if (method) {
       const char *cn = mrb_class_name(mrb, ci->proc->target_class);
+<<<<<<< HEAD
       const char *block_in = "";
       char args[128];
 
@@ -345,11 +361,18 @@ showcallinfo(mrb_state *mrb, int safe)
       else {
 	printf("\t[%d] %s:%d:in `%s%s'%s\n",
 	       i, filename, line, block_in, method, args);
+=======
+
+      if (cn) {
+        printf("\t[%d] %s:%d:in %s%s%s\n", i, filename, line, cn, sep, method);
+      }
+      else {
+        printf("\t[%d] %s:%d:in %s\n", i, filename, line, method);
+>>>>>>> master
       }
     }
     else {
-      printf("\t[%d] %s:%d\n",
-	     i, filename, line);
+      printf("\t[%d] %s:%d\n", i, filename, line);
     }
   }
 
@@ -369,12 +392,12 @@ main(int argc, char **argv)
   mrb_value ARGV, MRUBY_BIN;
 
   if (mrb == NULL) {
-    fprintf(stderr, "Invalid mrb_state, exiting mruby\n");
+    fputs("Invalid mrb_state, exiting mruby\n", stderr);
     return EXIT_FAILURE;
   }
 
   n = parse_args(mrb, argc, argv, &args);
-  if (n < 0 || (args.cmdline == NULL && args.rfp == NULL)) {
+  if (n == EXIT_FAILURE || (args.cmdline == NULL && args.rfp == NULL)) {
     cleanup(mrb, &args);
     usage(argv[0]);
     return n;
@@ -430,6 +453,7 @@ main(int argc, char **argv)
   }
   else {
     mrbc_context *c = mrbc_context_new(mrb);
+    mrb_sym zero_sym = mrb_intern2(mrb, "$0", 2);
     mrb_value v;
 
     if (args.verbose)
@@ -438,15 +462,27 @@ main(int argc, char **argv)
       c->no_exec = 1;
 
     if (args.rfp) {
+<<<<<<< HEAD
       mrbc_filename(mrb, c, args.cmdline ? args.cmdline : "-");
       mrb_gv_set(mrb, mrb_intern(mrb, "$0"), mrb_str_new2(mrb, c->filename));
+=======
+      char *cmdline;
+      cmdline = args.cmdline ? args.cmdline : "-";
+      mrbc_filename(mrb, c, cmdline);
+      mrb_gv_set(mrb, zero_sym, mrb_str_new_cstr(mrb, cmdline));
+>>>>>>> master
       v = mrb_load_file_cxt(mrb, args.rfp, c);
     }
     else {
       mrbc_filename(mrb, c, "-e");
+<<<<<<< HEAD
       mrb_gv_set(mrb, mrb_intern(mrb, "$0"), mrb_str_new2(mrb, c->filename));
+=======
+      mrb_gv_set(mrb, zero_sym, mrb_str_new(mrb, "-e", 2));
+>>>>>>> master
       v = mrb_load_string_cxt(mrb, args.cmdline, c);
     }
+
     mrbc_context_free(mrb, c);
     if (mrb->exc) {
       if (!mrb_undef_p(v)) {

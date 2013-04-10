@@ -4,15 +4,23 @@
 ** See Copyright Notice in mruby.h
 */
 
+#include <stdlib.h>
+#include <string.h>
 #include "mruby.h"
+#include "mruby/class.h"
 #include "mruby/irep.h"
 #include "mruby/variable.h"
-#include <string.h>
 
 void mrb_init_heap(mrb_state*);
 void mrb_init_core(mrb_state*);
 void mrb_init_ext(mrb_state*);
 void mrb_final_core(mrb_state*);
+
+static mrb_value
+inspect_main(mrb_state *mrb, mrb_value mod)
+{
+  return mrb_str_new(mrb, "main", 4);
+}
 
 mrb_state*
 mrb_open_allocf(mrb_allocf f, void *ud)
@@ -46,7 +54,7 @@ allocf(mrb_state *mrb, void *p, size_t size, void *ud)
 
 struct alloca_header {
   struct alloca_header *next;
-  char buf[0];
+  char buf[];
 };
 
 void*
@@ -55,6 +63,7 @@ mrb_alloca(mrb_state *mrb, size_t size)
   struct alloca_header *p;
 
   p = (struct alloca_header*) mrb_malloc(mrb, sizeof(struct alloca_header)+size);
+  if (p == NULL) return NULL;
   p->next = mrb->mems;
   mrb->mems = p;
   return (void*)p->buf;
@@ -63,8 +72,11 @@ mrb_alloca(mrb_state *mrb, size_t size)
 static void
 mrb_alloca_free(mrb_state *mrb)
 {
-  struct alloca_header *p = mrb->mems;
+  struct alloca_header *p;
   struct alloca_header *tmp;
+
+  if (mrb == NULL) return;
+  p = mrb->mems;
 
   while (p) {
     tmp = p;
@@ -74,7 +86,7 @@ mrb_alloca_free(mrb_state *mrb)
 }
 
 mrb_state*
-mrb_open()
+mrb_open(void)
 {
   mrb_state *mrb = mrb_open_allocf(allocf, NULL);
 
@@ -83,6 +95,17 @@ mrb_open()
 
 void mrb_free_symtbl(mrb_state *mrb);
 void mrb_free_heap(mrb_state *mrb);
+
+void
+mrb_irep_free(mrb_state *mrb, struct mrb_irep *irep)
+{
+  if (!(irep->flags & MRB_ISEQ_NO_FREE))
+    mrb_free(mrb, irep->iseq);
+  mrb_free(mrb, irep->pool);
+  mrb_free(mrb, irep->syms);
+  mrb_free(mrb, irep->lines);
+  mrb_free(mrb, irep);
+}
 
 void
 mrb_close(mrb_state *mrb)
@@ -96,12 +119,7 @@ mrb_close(mrb_state *mrb)
   mrb_free(mrb, mrb->stbase);
   mrb_free(mrb, mrb->cibase);
   for (i=0; i<mrb->irep_len; i++) {
-    if (!(mrb->irep[i]->flags & MRB_ISEQ_NO_FREE))
-      mrb_free(mrb, mrb->irep[i]->iseq);
-    mrb_free(mrb, mrb->irep[i]->pool);
-    mrb_free(mrb, mrb->irep[i]->syms);
-    mrb_free(mrb, mrb->irep[i]->lines);
-    mrb_free(mrb, mrb->irep[i]);
+    mrb_irep_free(mrb, mrb->irep[i]);
   }
   mrb_free(mrb, mrb->irep);
   mrb_free(mrb, mrb->rescue);
@@ -112,6 +130,10 @@ mrb_close(mrb_state *mrb)
   mrb_free(mrb, mrb);
 }
 
+#ifndef MRB_IREP_ARRAY_INIT_SIZE
+# define MRB_IREP_ARRAY_INIT_SIZE (256u)
+#endif
+
 mrb_irep*
 mrb_add_irep(mrb_state *mrb)
 {
@@ -119,14 +141,14 @@ mrb_add_irep(mrb_state *mrb)
   mrb_irep *irep;
 
   if (!mrb->irep) {
-    int max = 256;
+    size_t max = MRB_IREP_ARRAY_INIT_SIZE;
 
     if (mrb->irep_len > max) max = mrb->irep_len+1;
     mrb->irep = (mrb_irep **)mrb_calloc(mrb, max, sizeof(mrb_irep*));
     mrb->irep_capa = max;
   }
   else if (mrb->irep_capa <= mrb->irep_len) {
-    int i;
+    size_t i;
     size_t old_capa = mrb->irep_capa;
     while (mrb->irep_capa <= mrb->irep_len) {
       mrb->irep_capa *= 2;
@@ -147,8 +169,10 @@ mrb_add_irep(mrb_state *mrb)
 mrb_value
 mrb_top_self(mrb_state *mrb)
 {
-  mrb_value v;
-
-  MRB_SET_VALUE(v, MRB_TT_MAIN, value.i, 0);
-  return v;
+  if (!mrb->top_self) {
+    mrb->top_self = (struct RObject*)mrb_obj_alloc(mrb, MRB_TT_OBJECT, mrb->object_class);  
+    mrb_define_singleton_method(mrb, mrb->top_self, "inspect", inspect_main, ARGS_NONE());
+    mrb_define_singleton_method(mrb, mrb->top_self, "to_s", inspect_main, ARGS_NONE());
+  }
+  return mrb_obj_value(mrb->top_self);
 }

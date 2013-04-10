@@ -1,5 +1,7 @@
 MRuby.each_target do
-  dir = File.dirname(__FILE__).relative_path_from(root)
+  current_dir = File.dirname(__FILE__).relative_path_from(Dir.pwd)
+  relative_from_root = File.dirname(__FILE__).relative_path_from(MRUBY_ROOT)
+  current_build_dir = "#{build_dir}/#{relative_from_root}"
 
   gems.each do |g|
     test_rbobj = g.test_rbireps.ext(exts.object)
@@ -8,7 +10,11 @@ MRuby.each_target do
     file g.test_rbireps => [g.test_rbfiles].flatten + [g.build.mrbcfile, libfile("#{build_dir}/lib/libmruby")] do |t|
       open(t.name, 'w') do |f|
         g.print_gem_init_header(f)
-        g.build.mrbc.run f, g.test_preload, "gem_test_irep_#{g.funcname}_preload"
+        test_preload = [g.dir, MRUBY_ROOT].map {|dir|
+          File.expand_path(g.test_preload, dir)
+        }.find {|file| File.exists?(file) }
+
+        g.build.mrbc.run f, test_preload, "gem_test_irep_#{g.funcname}_preload"
         g.test_rbfiles.flatten.each_with_index do |rbfile, i|
           g.build.mrbc.run f, rbfile, "gem_test_irep_#{g.funcname}_#{i}"
         end
@@ -16,7 +22,11 @@ MRuby.each_target do
         f.puts %Q[void GENERATED_TMP_mrb_#{g.funcname}_gem_test(mrb_state *mrb) {]
         unless g.test_rbfiles.empty?
           f.puts %Q[  mrb_state *mrb2;]
-          f.puts %Q[  mrb_value val1, val2, ary1, ary2;]
+          if g.test_args.empty?
+            f.puts %Q[  mrb_value val1, val2, ary1, ary2;]
+          else
+            f.puts %Q[  mrb_value val1, val2, ary1, ary2, test_args_hash;]
+          end
           f.puts %Q[  int ai;]
           g.test_rbfiles.count.times do |i|
             f.puts %Q[  ai = mrb_gc_arena_save(mrb);]
@@ -24,12 +34,12 @@ MRuby.each_target do
             f.puts %Q[  mrb_load_irep(mrb2, gem_test_irep_#{g.funcname}_preload);]
             f.puts %Q[  if (mrb2->exc) {]
             f.puts %Q[    mrb_p(mrb2, mrb_obj_value(mrb2->exc));]
-            f.puts %Q[    exit(0);]
+            f.puts %Q[    exit(EXIT_FAILURE);]
             f.puts %Q[  }]
             f.puts %Q[  mrb_const_set(mrb2, mrb_obj_value(mrb2->object_class), mrb_intern(mrb2, "GEMNAME"), mrb_str_new(mrb2, "#{g.name}", #{g.name.length}));]
 
             if not g.test_args.empty?
-              f.puts %Q[  mrb_value test_args_hash = mrb_hash_new_capa(mrb, #{g.test_args.length}); ]
+              f.puts %Q[  test_args_hash = mrb_hash_new_capa(mrb, #{g.test_args.length}); ]
               g.test_args.each do |arg_name, arg_value|
                 escaped_arg_name = arg_name.gsub('\\', '\\\\\\\\').gsub('"', '\"')
                 escaped_arg_value = arg_value.gsub('\\', '\\\\\\\\').gsub('"', '\"')
@@ -43,7 +53,7 @@ MRuby.each_target do
             f.puts %Q[  mrb_load_irep(mrb2, gem_test_irep_#{g.funcname}_#{i});]
             f.puts %Q[  if (mrb2->exc) {]
             f.puts %Q[    mrb_p(mrb2, mrb_obj_value(mrb2->exc));]
-            f.puts %Q[    exit(0);]
+            f.puts %Q[    exit(EXIT_FAILURE);]
             f.puts %Q[  }]
             f.puts %Q[  ]
 
@@ -62,7 +72,7 @@ MRuby.each_target do
             f.puts %Q[    ]
             f.puts %Q[    while(mrb_test(val2)) {]
             f.puts %Q[      char *str = mrb_string_value_cstr(mrb2, &val2);]
-            f.puts %Q[      mrb_ary_push(mrb, ary1, mrb_str_new(mrb, str, strlen(str)));]
+            f.puts %Q[      mrb_ary_push(mrb, ary1, mrb_str_new_cstr(mrb, str));]
             f.puts %Q[      val2 = mrb_ary_shift(mrb2, ary2);]
             f.puts %Q[    }]
             f.puts %Q[  }]

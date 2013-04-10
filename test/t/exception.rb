@@ -287,10 +287,21 @@ assert('Exception 16') do
   end
 end
 
-assert('Exception#inspect without message') do
-  Exception.new.inspect
+assert('Exception 17') do
+  begin
+    raise "a"  # StandardError
+  rescue ArgumentError
+    1
+  rescue StandardError
+    2
+  else
+    3
+  ensure
+    4
+  end == 2
 end
 
+<<<<<<< HEAD
 if $full_test
   # very deeply recursive function that stil returns albeit very deeply so
   $test_infinite_recursion    = 0
@@ -312,4 +323,22 @@ if $full_test
     # OK if an exception was caught, otherwise a number will be stored in a
     a == :ok
   end
+=======
+assert('Exception 18') do
+  begin
+    0
+  rescue ArgumentError
+    1
+  rescue StandardError
+    2
+  else
+    3
+  ensure
+    4
+  end == 3
+end
+
+assert('Exception#inspect without message') do
+  Exception.new.inspect
+>>>>>>> master
 end

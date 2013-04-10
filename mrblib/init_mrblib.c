@@ -4,8 +4,12 @@
 #include "mruby/string.h"
 #include "mruby/proc.h"
 
+<<<<<<< HEAD
 extern const char mrblib_irep[];
 //extern const char mrblib_ext_irep[];
+=======
+extern const uint8_t mrblib_irep[];
+>>>>>>> master
 
 void
 mrb_init_mrblib(mrb_state *mrb)

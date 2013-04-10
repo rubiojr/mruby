@@ -11,6 +11,7 @@ MRuby::Build.new do |conf|
   # conf.gem :github => 'masuidrive/mrbgems-example', :branch => 'master'
   # conf.gem :git => 'git@github.com:masuidrive/mrbgems-example.git', :branch => 'master', :options => '-v'
 
+<<<<<<< HEAD
   conf.gem :git => 'https://github.com/iij/mruby-mtest.git'
   conf.gem :git => 'https://github.com/iij/mruby-dir.git'
   conf.gem :git => 'https://github.com/iij/mruby-digest.git'
@@ -19,6 +20,44 @@ MRuby::Build.new do |conf|
   conf.gem :git => 'https://github.com/iij/mruby-syslog.git'
   conf.gem :git => 'https://github.com/iij/mruby-env.git'
   conf.gem :git => 'https://github.com/iij/mruby-simple-random.git'
+=======
+  # Use standard Kernel#sprintf method
+  conf.gem "#{root}/mrbgems/mruby-sprintf"
+
+  # Use standard print/puts/p
+  conf.gem "#{root}/mrbgems/mruby-print"
+
+  # Use standard Math module
+  conf.gem "#{root}/mrbgems/mruby-math"
+
+  # Use standard Time class
+  conf.gem "#{root}/mrbgems/mruby-time"
+
+  # Use standard Struct class
+  conf.gem "#{root}/mrbgems/mruby-struct"
+
+  # Use extensional Enumerable module
+  conf.gem "#{root}/mrbgems/mruby-enum-ext"
+
+  # Use extensional String class
+  conf.gem "#{root}/mrbgems/mruby-string-ext"
+
+  # Use extensional Numeric class
+  conf.gem "#{root}/mrbgems/mruby-numeric-ext"
+
+  # Use extensional Array class
+  conf.gem "#{root}/mrbgems/mruby-array-ext"
+
+  # Use extensional Hash class
+  conf.gem "#{root}/mrbgems/mruby-hash-ext"
+
+  # Use Random class
+  conf.gem "#{root}/mrbgems/mruby-random"
+  
+  # No use eval method
+  # conf.gem "#{root}/mrbgems/mruby-eval"
+
+>>>>>>> master
 
   # Generate binaries
   # conf.bins = %w(mrbc mruby mirb)
@@ -86,4 +125,7 @@ end
 #   conf.build_mrbtest_lib_only
 #   
 #   conf.gem 'examples/mrbgems/c_and_ruby_extension_example'
+#
+#   conf.test_runner.command = 'env'
+#
 # end

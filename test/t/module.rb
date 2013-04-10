@@ -129,6 +129,21 @@ assert('Module#const_get', '15.2.2.4.23') do
   Test4ConstSet.const_get(:Const4Test4ConstSet) == 23
 end
 
+assert('Module.constants', '15.2.2.4.24') do
+  $n = []
+  module TestA
+    Const = 1
+  end
+  class TestB
+    include TestA
+    Const2 = 1
+    $n = constants.sort
+  end
+
+  TestA.constants == [ :Const ] and
+  $n == [ :Const, :Const2 ]
+end
+
 assert('Module#include', '15.2.2.4.27') do
   module Test4Include
     Const4Include = 42
@@ -241,6 +256,28 @@ assert('Module#remove_class_variable', '15.2.2.4.39') do
   not Test4RemoveClassVariable.class_variables.include? :@@cv
 end
 
+assert('Module#remove_const', '15.2.2.4.40') do
+  module Test4RemoveConst
+    ExistingConst = 23 
+  end
+
+  result = Test4RemoveConst.module_eval { remove_const :ExistingConst } 
+
+  name_error = false
+  begin
+    Test4RemoveConst.module_eval { remove_const :NonExistingConst }
+  rescue NameError
+    name_error = true
+  end
+
+  # Constant removed from Module
+  not Test4RemoveConst.const_defined? :ExistingConst and
+    # Return value of binding
+    result == 23 and
+    # Name Error raised when Constant doesn't exist
+    name_error
+end
+
 assert('Module#remove_method', '15.2.2.4.41') do
   module Test4RemoveMethod
     class Parent
@@ -258,6 +295,29 @@ assert('Module#remove_method', '15.2.2.4.41') do
 
   Test4RemoveMethod::Child.instance_methods.include? :hello and
   not Test4RemoveMethod::Child.instance_methods(false).include? :hello
+end
+
+assert('Module.undef_method', '15.2.2.4.42') do
+  module Test4UndefMethod
+    class Parent
+      def hello
+      end
+     end
+
+     class Child < Parent
+      def hello
+      end
+     end
+
+     class GrandChild < Child
+     end
+  end
+
+  Test4UndefMethod::Child.class_eval{ undef_method :hello }
+
+  Test4UndefMethod::Parent.new.respond_to?(:hello) and
+  not Test4UndefMethod::Child.new.respond_to?(:hello) and
+  not Test4UndefMethod::GrandChild.new.respond_to?(:hello)
 end
 
 

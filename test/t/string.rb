@@ -32,7 +32,7 @@ assert('String#==', '15.2.10.5.4') do
   'abc' == 'abc' and not 'abc' == 'cba'
 end
 
-# TODO: SEGFAULT ATM assert('String#=~', '15.2.10.5.5')
+# 'String#=~', '15.2.10.5.5' will be tested in mrbgems.
 
 assert('String#[]', '15.2.10.5.6') do
   # length of args is 1
@@ -49,7 +49,7 @@ assert('String#[]', '15.2.10.5.6') do
   e1 = 'abc'[1, 2]
 
   # args is RegExp
-  # TODO SEGFAULT ATM
+  # It will be tested in mrbgems.
 
   # args is String
   a3 = 'abc'['bc']
@@ -225,7 +225,14 @@ if Object.const_defined?(:Regexp)
 end # END: Object.const_defined?(:Regexp)
 
 assert('String#gsub', '15.2.10.5.18') do
-  'abcabc'.gsub('b', 'B') == 'aBcaBc' && 'abcabc'.gsub('b') { |w| w.capitalize } == 'aBcaBc' 
+  assert_equal('aBcaBc', 'abcabc'.gsub('b', 'B'), 'gsub without block')
+  assert_equal('aBcaBc', 'abcabc'.gsub('b'){|w| w.capitalize }, 'gsub with block')
+  assert_equal('$a$a$',  '#a#a#'.gsub('#', '$'), 'mruby/mruby#847')
+  assert_equal('$a$a$',  '#a#a#'.gsub('#'){|w| '$' }, 'mruby/mruby#847 with block')
+  assert_equal('$$a$$',  '##a##'.gsub('##', '$$'), 'mruby/mruby#847 another case')
+  assert_equal('$$a$$',  '##a##'.gsub('##'){|w| '$$' }, 'mruby/mruby#847 another case with block')
+  assert_equal('A',      'a'.gsub('a', 'A'))
+  assert_equal('A',      'a'.gsub('a'){|w| w.capitalize })
 end
 
 assert('String#gsub!', '15.2.10.5.19') do
@@ -235,7 +242,7 @@ assert('String#gsub!', '15.2.10.5.19') do
   b = 'abcabc'
   b.gsub!('b') { |w| w.capitalize }
 
-  a == 'aBcaBc' && b == 'aBcaBc' 
+  a == 'aBcaBc' && b == 'aBcaBc'
 end
 
 assert('String#hash', '15.2.10.5.20') do
@@ -276,7 +283,7 @@ assert('String#length', '15.2.10.5.26') do
   'abc'.length == 3
 end
 
-# TODO Broken ATM assert('String#match', '15.2.10.5.27') do
+# 'String#match', '15.2.10.5.27' will be tested in mrbgems.
 
 assert('String#replace', '15.2.10.5.28') do
   a = ''
@@ -304,6 +311,7 @@ assert('String#rindex', '15.2.10.5.31') do
     'abcabc'.rindex('a', 1) == 0 and 'abcabc'.rindex('a', 4) == 3
 end
 
+<<<<<<< HEAD
 if Object.const_defined?(:Regexp)
   # TODO Broken ATM assert('String#scan', '15.2.10.5.32') do
   assert('String#scan', '15.2.10.5.32') do
@@ -322,6 +330,9 @@ if Object.const_defined?(:Regexp)
     result4 == [["ba", "r"], ["ba", "z"], ["ba", "r"], ["ba", "z"]]
   end
 end
+=======
+# 'String#scan', '15.2.10.5.32' will be tested in mrbgems.
+>>>>>>> master
 
 assert('String#size', '15.2.10.5.33') do
   'abc'.size == 3
@@ -345,7 +356,7 @@ assert('String#slice', '15.2.10.5.34') do
   e11 = e1.slice(0)
 
   # args is RegExp
-  # TODO SEGFAULT ATM
+  # It will be tested in mrbgems.
 
   # args is String
   a3 = 'abc'.slice('bc')
@@ -456,7 +467,9 @@ if Object.const_defined?(:Regexp)
 end # END: Object.const_defined?(:Regexp)
 
 assert('String#sub', '15.2.10.5.36') do
-  'abcabc'.sub('b', 'B') == 'aBcabc' && 'abcabc'.sub('b') { |w| w.capitalize } == 'aBcabc' 
+  'abcabc'.sub('b', 'B') == 'aBcabc' and
+    'abcabc'.sub('b') { |w| w.capitalize } == 'aBcabc' and
+    'aa#'.sub('#', '$') == 'aa$'
 end
 
 assert('String#sub!', '15.2.10.5.37') do

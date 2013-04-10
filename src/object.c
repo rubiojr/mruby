@@ -5,12 +5,16 @@
 */
 
 #include "mruby.h"
+<<<<<<< HEAD
 #include <string.h>
 #include "mruby/string.h"
 #include <stdio.h>
 #include "mruby/array.h"
+=======
+>>>>>>> master
 #include "mruby/class.h"
 #include "mruby/numeric.h"
+#include "mruby/string.h"
 #include "error.h"
 
 int
@@ -156,7 +160,8 @@ true_and(mrb_state *mrb, mrb_value obj)
   int obj2;
 
   mrb_get_args(mrb, "b", &obj2);
-  return obj2 ? mrb_true_value() : mrb_false_value();
+
+  return mrb_bool_value(obj2);
 }
 
 /* 15.2.5.3.2  */
@@ -175,7 +180,7 @@ true_xor(mrb_state *mrb, mrb_value obj)
   int obj2;
 
   mrb_get_args(mrb, "b", &obj2);
-  return obj2 ? mrb_false_value() : mrb_true_value();
+  return mrb_bool_value(!obj2);
 }
 
 /* 15.2.5.3.3  */
@@ -268,7 +273,7 @@ false_xor(mrb_state *mrb, mrb_value obj)
   int obj2;
 
   mrb_get_args(mrb, "b", &obj2);
-  return obj2 ? mrb_true_value() : mrb_false_value();
+  return mrb_bool_value(obj2);
 }
 
 /* 15.2.4.3.3  */
@@ -288,7 +293,7 @@ false_or(mrb_state *mrb, mrb_value obj)
   int obj2;
 
   mrb_get_args(mrb, "b", &obj2);
-  return obj2 ? mrb_true_value() : mrb_false_value();
+  return mrb_bool_value(obj2);
 }
 
 /* 15.2.6.3.3  */
@@ -349,12 +354,7 @@ convert_type(mrb_state *mrb, mrb_value val, const char *tname, const char *metho
   m = mrb_intern(mrb, method);
   if (!mrb_respond_to(mrb, val, m)) {
     if (raise) {
-      mrb_raisef(mrb, E_TYPE_ERROR, "can't convert %s into %s",
-         mrb_nil_p(val) ? "nil" :
-         (mrb_type(val) == MRB_TT_TRUE) ? "true" :
-         (mrb_type(val) == MRB_TT_FALSE) ? "false" :
-         mrb_obj_classname(mrb, val),
-         tname);
+      mrb_raisef(mrb, E_TYPE_ERROR, "can't convert %S into %S", val, mrb_str_new_cstr(mrb, tname));
       return mrb_nil_value();
     }
     else {
@@ -385,8 +385,8 @@ mrb_convert_type(mrb_state *mrb, mrb_value val, mrb_int type, const char *tname,
   if (mrb_type(val) == type) return val;
   v = convert_type(mrb, val, tname, method, 1/*Qtrue*/);
   if (mrb_type(v) != type) {
-    mrb_raisef(mrb, E_TYPE_ERROR, "%s cannot be converted to %s by #%s",
-	      mrb_obj_classname(mrb, val), tname, method);
+    mrb_raisef(mrb, E_TYPE_ERROR, "%S cannot be converted to %S by #%S", val,
+               mrb_str_new_cstr(mrb, tname), mrb_str_new_cstr(mrb, method));
   }
   return v;
 }
@@ -422,14 +422,11 @@ static const struct types {
   {MRB_TT_HASH,   "Hash"},
   {MRB_TT_STRING, "String"},
   {MRB_TT_RANGE,  "Range"},
-  {MRB_TT_REGEX,  "Regexp"},
-  {MRB_TT_STRUCT, "Struct"},
 //    {MRB_TT_BIGNUM,  "Bignum"},
 #ifdef ENABLE_IO
   {MRB_TT_FILE,   "File"},
 #endif
   {MRB_TT_DATA,   "Data"},  /* internal use: wrapped C pointers */
-  {MRB_TT_MATCH,  "MatchData"},  /* data of $~ */
 //    {MRB_TT_VARMAP,  "Varmap"},  /* internal use: dynamic variables */
 //    {MRB_TT_NODE,  "Node"},  /* internal use: syntax tree node */
 //    {MRB_TT_UNDEF,  "undef"},  /* internal use: #undef; should not happen */
@@ -465,12 +462,13 @@ mrb_check_type(mrb_state *mrb, mrb_value x, enum mrb_vtype t)
         else {
           etype = mrb_obj_classname(mrb, x);
         }
-        mrb_raisef(mrb, E_TYPE_ERROR, "wrong argument type %s (expected %s)",
-		  etype, type->name);
+        mrb_raisef(mrb, E_TYPE_ERROR, "wrong argument type %S (expected %S)",
+                   mrb_str_new_cstr(mrb, etype), mrb_str_new_cstr(mrb, type->name));
       }
       type++;
     }
-    mrb_raisef(mrb, E_TYPE_ERROR, "unknown type 0x%x (0x%x given)", t, mrb_type(x));
+    mrb_raisef(mrb, E_TYPE_ERROR, "unknown type %S (%S given)",
+               mrb_fixnum_value(t), mrb_fixnum_value(mrb_type(x)));
   }
 }
 
@@ -488,8 +486,16 @@ mrb_check_type(mrb_state *mrb, mrb_value x, enum mrb_vtype t)
 mrb_value
 mrb_any_to_s(mrb_state *mrb, mrb_value obj)
 {
+  mrb_value str = mrb_str_buf_new(mrb, 20);
   const char *cname = mrb_obj_classname(mrb, obj);
-  return mrb_sprintf(mrb, "#<%s:%p>", cname, mrb_voidp(obj));
+
+  mrb_str_buf_cat(mrb, str, "#<", 2);
+  mrb_str_cat2(mrb, str, cname);
+  mrb_str_cat(mrb, str, ":", 1);
+  mrb_str_concat(mrb, str, mrb_ptr_to_str(mrb, mrb_voidp(obj)));
+  mrb_str_buf_cat(mrb, str, ">", 1);
+
+  return str;
 }
 
 /*
@@ -549,9 +555,8 @@ mrb_to_integer(mrb_state *mrb, mrb_value val, const char *method)
     if (mrb_fixnum_p(val)) return val;
     v = convert_type(mrb, val, "Integer", method, TRUE);
     if (!mrb_obj_is_kind_of(mrb, v, mrb->fixnum_class)) {
-      const char *cname = mrb_obj_classname(mrb, val);
-      mrb_raisef(mrb, E_TYPE_ERROR, "can't convert %s to Integer (%s#%s gives %s)",
-               cname, cname, method, mrb_obj_classname(mrb, v));
+      mrb_raisef(mrb, E_TYPE_ERROR, "can't convert %S to Integer (%S#%S gives %S)",
+                 val, val, mrb_str_new_cstr(mrb, method), v);
     }
     return v;
 }
@@ -577,7 +582,7 @@ mrb_convert_to_integer(mrb_state *mrb, mrb_value val, int base)
       if (FIXABLE(mrb_float(val))) {
           break;
       }
-      return mrb_flt2big(mrb, mrb_float(val));
+      return mrb_flo_to_fixnum(mrb, val);
 
     case MRB_TT_FIXNUM:
       if (base != 0) goto arg_error;

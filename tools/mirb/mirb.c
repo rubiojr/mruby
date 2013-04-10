@@ -6,9 +6,11 @@
 ** immediately. It's a REPL...
 */
 
+#include <stdlib.h>
 #include <string.h>
 
 #include <mruby.h>
+#include "mruby/array.h"
 #include <mruby/proc.h>
 #include <mruby/data.h>
 #include <mruby/compile.h>
@@ -44,8 +46,12 @@ is_code_block_open(struct mrb_parser_state *parser)
 {
   int code_block_open = FALSE;
 
-  /* check for unterminated string */
-  if (parser->sterm) return TRUE;
+  /* check for heredoc */
+  if (parser->parsing_heredoc != NULL) return TRUE;
+  if (parser->heredoc_end_now) {
+    parser->heredoc_end_now = FALSE;
+    return FALSE;
+  }
 
   /* check if parser error are available */
   if (0 < parser->nerr) {
@@ -68,6 +74,9 @@ is_code_block_open(struct mrb_parser_state *parser)
     }
     return code_block_open;
   }
+
+  /* check for unterminated string */
+  if (parser->lex_strterm) return TRUE;
 
   switch (parser->lstate) {
 
@@ -131,8 +140,68 @@ is_code_block_open(struct mrb_parser_state *parser)
   return code_block_open;
 }
 
+void mrb_show_version(mrb_state *);
+void mrb_show_copyright(mrb_state *);
+
+struct _args {
+  int argc;
+  char** argv;
+};
+
+static void
+usage(const char *name)
+{
+  static const char *const usage_msg[] = {
+  "switches:",
+  "--version    print the version",
+  "--copyright  print the copyright",
+  NULL
+  };
+  const char *const *p = usage_msg;
+
+  printf("Usage: %s [switches]\n", name);
+  while(*p)
+    printf("  %s\n", *p++);
+}
+
+static int
+parse_args(mrb_state *mrb, int argc, char **argv, struct _args *args)
+{
+  static const struct _args args_zero = { 0 };
+
+  *args = args_zero;
+
+  for (argc--,argv++; argc > 0; argc--,argv++) {
+    char *item;
+    if (argv[0][0] != '-') break;
+
+    item = argv[0] + 1;
+    switch (*item++) {
+    case '-':
+      if (strcmp((*argv) + 2, "version") == 0) {
+        mrb_show_version(mrb);
+        exit(EXIT_SUCCESS);
+      }
+      else if (strcmp((*argv) + 2, "copyright") == 0) {
+        mrb_show_copyright(mrb);
+        exit(EXIT_SUCCESS);
+      }
+    default:
+      return EXIT_FAILURE;
+    }
+  }
+  return EXIT_SUCCESS;
+}
+
+static void
+cleanup(mrb_state *mrb, struct _args *args)
+{
+  mrb_close(mrb);
+}
+
 /* Print a short remark for the user */
-void print_hint(void)
+static void
+print_hint(void)
 {
   printf("mirb - Embeddable Interactive Ruby Shell\n");
   printf("\nThis is a very early version, please test and report errors.\n");
@@ -164,19 +233,28 @@ main(int argc, char **argv)
   struct mrb_parser_state *parser;
   mrb_state *mrb;
   mrb_value result;
+  struct _args args;
   int n;
   int code_block_open = FALSE;
   mrb_value MIRB_BIN;
   int ai;
 
-  print_hint();
-
   /* new interpreter instance */
   mrb = mrb_open();
   if (mrb == NULL) {
-    fprintf(stderr, "Invalid mrb interpreter, exiting mirb");
+    fputs("Invalid mrb interpreter, exiting mirb\n", stderr);
     return EXIT_FAILURE;
   }
+  mrb_define_global_const(mrb, "ARGV", mrb_ary_new_capa(mrb, 0));
+
+  n = parse_args(mrb, argc, argv, &args);
+  if (n == EXIT_FAILURE) {
+    cleanup(mrb, &args);
+    usage(argv[0]);
+    return n;
+  }
+
+  print_hint();
 
   cxt = mrbc_context_new(mrb);
   cxt->capture_errors = 1;
@@ -210,14 +288,18 @@ main(int argc, char **argv)
       last_code_line[char_index++] = last_char;
     }
     if (last_char == EOF) {
-      printf("\n");
+      fputs("\n", stdout);
       break;
     }
 
     last_code_line[char_index] = '\0';
 #else
     char* line = readline(code_block_open ? "* " : "> ");
-    strncat(last_code_line, line, sizeof(last_code_line)-1);
+    if(line == NULL) {
+      printf("\n");
+      break;
+    }
+    strncpy(last_code_line, line, sizeof(last_code_line)-1);
     add_history(line);
     free(line);
 #endif
@@ -255,34 +337,37 @@ main(int argc, char **argv)
     }
     else {
       if (0 < parser->nerr) {
-	/* syntax error */
-	printf("line %d: %s\n", parser->error_buffer[0].lineno, parser->error_buffer[0].message);
+        /* syntax error */
+        printf("line %d: %s\n", parser->error_buffer[0].lineno, parser->error_buffer[0].message);
       }
       else {
-	/* generate bytecode */
-	n = mrb_generate_code(mrb, parser);
+        /* generate bytecode */
+        n = mrb_generate_code(mrb, parser);
 
-	/* evaluate the bytecode */
-	result = mrb_run(mrb,
+        /* evaluate the bytecode */
+        result = mrb_run(mrb,
             /* pass a proc for evaulation */
             mrb_proc_new(mrb, mrb->irep[n]),
             mrb_top_self(mrb));
-	/* did an exception occur? */
-	if (mrb->exc) {
-	  p(mrb, mrb_obj_value(mrb->exc));
-	  mrb->exc = 0;
-	}
-	else {
-	  /* no */
-	  printf(" => ");
-	  p(mrb, result);
-	}
+        /* did an exception occur? */
+        if (mrb->exc) {
+          p(mrb, mrb_obj_value(mrb->exc));
+          mrb->exc = 0;
+        }
+        else {
+          /* no */
+          printf(" => ");
+          if (!mrb_respond_to(mrb,result,mrb_intern(mrb,"inspect"))){
+            result = mrb_any_to_s(mrb,result);
+          }
+          p(mrb, result);
+        }
       }
       ruby_code[0] = '\0';
       last_code_line[0] = '\0';
-      mrb_parser_free(parser);
       mrb_gc_arena_restore(mrb, ai);
     }
+    mrb_parser_free(parser);
   }
   mrbc_context_free(mrb, cxt);
   mrb_close(mrb);
