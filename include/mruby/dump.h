@@ -13,7 +13,6 @@ extern "C" {
 
 #include "mruby.h"
 
-int mrb_dump_irep(mrb_state*,int,FILE*,int);
 int mrb_bdump_irep(mrb_state *mrb, int n, FILE *f,const char *initname);
 mrb_value mrb_dump_irep_str(mrb_state*,int,int);
 
