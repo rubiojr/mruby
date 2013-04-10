@@ -719,19 +719,6 @@ mrb_str_dup(mrb_state *mrb, mrb_value str)
   return mrb_str_new(mrb, s->ptr, s->len);
 }
 
-#ifdef ENABLE_REGEXP
-static mrb_value
-mrb_str_subpat(mrb_state *mrb, mrb_value str, mrb_value re, mrb_value backref)
-{
-	if (mrb_reg_search(mrb, re, str, 0, 0) >= 0) {
-		mrb_value match = mrb_backref_get(mrb);
-		int nth = mrb_reg_backref_number(mrb, match, backref);
-		return mrb_reg_nth_match(mrb, nth, match);
-	}
-	return mrb_nil_value();
-}
-#endif
-
 static mrb_value
 mrb_str_aref(mrb_state *mrb, mrb_value str, mrb_value indx)
 {

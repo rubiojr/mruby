@@ -34,7 +34,6 @@ usage(const char *name)
   "-v           print version number, then trun on verbose mode",
   "-g           produce debugging information",
   "-B<symbol>   binary <symbol> output in C language format",
-  "-g           produce debugging information with mrb file",
   "--verbose    run at verbose mode",
   "--version    print the version",
   "--copyright  print the copyright",
@@ -231,11 +230,6 @@ main(int argc, char **argv)
 
 void
 mrb_init_mrblib(mrb_state *mrb)
-{
-}
-
-void
-mrb_init_mrblib_ext(mrb_state *mrb)
 {
 }
 

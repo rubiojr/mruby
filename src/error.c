@@ -410,7 +410,6 @@ mrb_make_exception(mrb_state *mrb, int argc, mrb_value *argv)
   return make_exception(mrb, argc, argv, TRUE);
 }
 
-#ifndef ENABLE_ERRNO
 void
 mrb_sys_fail(mrb_state *mrb, const char *mesg)
 {
@@ -429,7 +428,6 @@ mrb_sys_fail(mrb_state *mrb, const char *mesg)
     mrb_raise(mrb, E_RUNTIME_ERROR, mesg);
   }
 }
-#endif
 
 void
 mrb_init_exception(mrb_state *mrb)

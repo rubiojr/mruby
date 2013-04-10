@@ -64,8 +64,6 @@ class String
     ### *** TODO *** ###
     unless Object.const_defined?(:Regexp)
       raise NotImplementedError, "scan not available (yet)"
-    else
-      self._scan(reg, &block)
     end
   end
 
@@ -77,9 +75,7 @@ class String
   #
   # ISO 15.2.10.5.36
   def sub(*args, &block)
-    if Object.const_defined?(:Regexp) && args[0].is_a?(Regexp)
-      _sub(*args, &block)
-    elsif args.size == 2
+    if args.size == 2
       split(args[0], 2).join(args[1])
     elsif args.size == 1 && block
       split(args[0], 2).join(block.call(args[0]))

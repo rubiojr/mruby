@@ -64,6 +64,3 @@ end
 class NotImplementedError < ScriptError
 end
 
-class LoadError < ScriptError
-end
-

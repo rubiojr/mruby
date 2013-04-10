@@ -42,20 +42,21 @@ MRuby::Build.new do |conf|
   conf.gem "#{root}/mrbgems/mruby-hash-ext"
 
   # Use Random class
-  conf.gem "#{root}/mrbgems/mruby-random"
+  #conf.gem "#{root}/mrbgems/mruby-random"
   
   # No use eval method
   # conf.gem "#{root}/mrbgems/mruby-eval"
 
   # Use IIJ modules
-  conf.gem :git => 'https://github.com/iij/mruby-mtest.git'
-  conf.gem :git => 'https://github.com/iij/mruby-dir.git'
   conf.gem :git => 'https://github.com/iij/mruby-digest.git'
-  conf.gem :git => 'https://github.com/iij/mruby-process.git'
-  conf.gem :git => 'https://github.com/iij/mruby-pack.git'
-  conf.gem :git => 'https://github.com/iij/mruby-syslog.git'
+  conf.gem :git => 'https://github.com/iij/mruby-dir.git'
   conf.gem :git => 'https://github.com/iij/mruby-env.git'
+  conf.gem :git => 'https://github.com/iij/mruby-mtest.git'
+  conf.gem :git => 'https://github.com/iij/mruby-pack.git'
+  conf.gem :git => 'https://github.com/iij/mruby-process.git'
+  conf.gem :git => 'https://github.com/iij/mruby-regexp-pcre.git'
   conf.gem :git => 'https://github.com/iij/mruby-simple-random.git'
+  conf.gem :git => 'https://github.com/iij/mruby-syslog.git'
 
   # Generate binaries
   # conf.bins = %w(mrbc mruby mirb)
