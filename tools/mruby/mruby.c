@@ -9,10 +9,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef ENABLE_REQUIRE
-extern mrb_value mrb_file_exist(mrb_state *mrb, mrb_value fname);
-#endif
-
 #ifndef ENABLE_STDIO
 static void
 p(mrb_state *mrb, mrb_value obj)
@@ -31,26 +27,12 @@ void mrb_show_copyright(mrb_state *);
 struct _args {
   FILE *rfp;
   char* cmdline;
-<<<<<<< HEAD
-  int fname        : 1;
-  int mrbfile      : 1;
-  int check_syntax : 1;
-  int verbose      : 1;
-  int safetrace    : 1;
-=======
   mrb_bool fname        : 1;
   mrb_bool mrbfile      : 1;
   mrb_bool check_syntax : 1;
   mrb_bool verbose      : 1;
->>>>>>> master
   int argc;
   char** argv;
-#ifdef ENABLE_REQUIRE
-  int load_path_len;
-  char** load_path;
-  int library_len;
-  char** library;
-#endif /* ENABLE_REQUIRE */
 };
 
 static void
@@ -61,12 +43,7 @@ usage(const char *name)
   "-b           load and execute RiteBinary (mrb) file",
   "-c           check syntax only",
   "-e 'command' one line of script",
-#ifdef ENABLE_REQUIRE
-  "-Idirectory  specify $LOAD_PATH directory (may be used more than once)",
-  "-rlibrary    require the library, before executing your script",
-#endif /* ENABLE_REQUIRE */
   "-v           print version number, then run in verbose mode",
-  "--safetrace  don't allocate more memory while showing backtrace",
   "--verbose    run in verbose mode",
   "--version    print the version",
   "--copyright  print the copyright",
@@ -131,42 +108,12 @@ append_cmdline:
         return EXIT_SUCCESS;
       }
       break;
-#ifdef ENABLE_REQUIRE
-    case 'I':
-      if (args->load_path_len == 0) {
-        args->load_path = (char**) mrb_malloc(mrb, sizeof(char**));
-      } else {
-        args->load_path = (char **)mrb_realloc(mrb, args->load_path, sizeof(char*) * (args->load_path_len + 1));
-      }
-      {
-        char* buf = (char *)mrb_malloc(mrb, strlen((*argv)+2));
-        strcpy(buf, (*argv)+2);
-        args->load_path[args->load_path_len++] = buf;
-      }
-      break;
-    case 'r':
-      if (args->library_len == 0) {
-        args->library = (char**) mrb_malloc(mrb, sizeof(char**));
-      } else {
-        args->library = (char **)mrb_realloc(mrb, args->library, sizeof(char*) * (args->library_len+ 1));
-      }
-      {
-        char* buf = (char *)mrb_malloc(mrb, strlen((*argv)+2));
-        strcpy(buf, (*argv)+2);
-        args->library[args->library_len++] = buf;
-      }
-      break;
-#endif /* ENABLE_REQUIRE */
     case 'v':
       if (!args->verbose) mrb_show_version(mrb);
       args->verbose = 1;
       break;
     case '-':
-      if (strcmp((*argv) + 2, "safetrace") == 0) {
-        args->safetrace = 1;
-        break;
-      }
-      else if (strcmp((*argv) + 2, "version") == 0) {
+      if (strcmp((*argv) + 2, "version") == 0) {
         mrb_show_version(mrb);
         exit(EXIT_SUCCESS);
       }
@@ -216,86 +163,20 @@ cleanup(mrb_state *mrb, struct _args *args)
 }
 
 static void
-inspect_args(mrb_state *mrb, char *buf, size_t bufsize, const char *method, const mrb_callinfo *ci, const mrb_value *stbase)
+showcallinfo(mrb_state *mrb)
 {
-  const mrb_value *stack;
-  mrb_value str;
-  int bi, i, n;
-
-  if (ci->acc >= 0)
-    stack = &stbase[ci->stackidx + ci->acc];
-  else
-    stack = &stbase[ci->stackidx + 2];
-
-  if (method != NULL) {
-    str = mrb_funcall(mrb, stack[0], "inspect", 0);
-    n = RSTRING_LEN(str);
-    if (n > 32)
-      n = 32;
-    bi = snprintf(buf, bufsize, ": %.*s.%s", n, RSTRING_PTR(str), method);
-  } else {
-    bi = snprintf(buf, bufsize, ": yield");
-  }
-  if (ci->argc < 1)
-    return;
-
-  bi += snprintf(buf+bi, bufsize-bi, "(");
-  for (i=1; i < ci->argc+1; i++) {
-    str = mrb_funcall(mrb, stack[i], "inspect", 0);
-    n = RSTRING_LEN(str);
-    if (n > 32)
-      n = 32;
-    if (i > 1)
-      bi += snprintf(buf+bi, bufsize-bi, ", ");
-    bi += snprintf(buf+bi, bufsize-bi, "%.*s", n, RSTRING_PTR(str));
-  }
-  if (bi + 2 < bufsize) {
-    snprintf(buf+bi, bufsize-bi, ")");
-  } else {
-    /* overflow */
-    const char dotdotdot[] = "...)";
-    memcpy(buf+bufsize-sizeof(dotdotdot), dotdotdot, sizeof(dotdotdot));
-  }
-}
-
-static void
-showcallinfo(mrb_state *mrb, int safe)
-{
-  mrb_callinfo *ci, *cibase;
-  mrb_value *stbase;
+  mrb_callinfo *ci;
   mrb_int ciidx;
   const char *filename, *method, *sep;
   int i, line;
-  int copied = 0;
 
   printf("trace:\n");
   ciidx = mrb_fixnum(mrb_obj_iv_get(mrb, mrb->exc, mrb_intern(mrb, "ciidx")));
   if (ciidx >= mrb->ciend - mrb->cibase)
     ciidx = 10; /* ciidx is broken... */
 
-  if (!safe) {
-    /* preserve them to call "#inspect" later */
-    int stsize = mrb->stend - mrb->stbase;
-    cibase = malloc(sizeof(mrb_callinfo) * (ciidx + 1));
-    stbase = malloc(sizeof(mrb_value) * stsize);
-    if (cibase != NULL && stbase != NULL) {
-      copied = 1;
-      memcpy(cibase, mrb->cibase, sizeof(mrb_callinfo) * (ciidx + 1));
-      memcpy(stbase, mrb->stbase, sizeof(mrb_value) * stsize);
-    } else {
-      printf("warning: memory exhausted - cannot show arguments\n");
-      free(cibase);
-      free(stbase);
-      cibase = mrb->cibase;
-      stbase = mrb->stbase;
-    }
-  } else {
-    cibase = mrb->cibase;
-    stbase = mrb->stbase;
-  }
-
   for (i = ciidx; i >= 0; i--) {
-    ci = &cibase[i];
+    ci = &mrb->cibase[i];
     filename = "(unknown)";
     line = -1;
 
@@ -309,21 +190,12 @@ showcallinfo(mrb_state *mrb, int safe)
       if (irep->lines != NULL) {
         mrb_code *pc;
 
-<<<<<<< HEAD
-	if (i+1 <= ciidx) {
-	  pc = cibase[i+1].pc;
-	}
-	else {
-	  pc = (mrb_code*)mrb_voidp(mrb_obj_iv_get(mrb, mrb->exc, mrb_intern(mrb, "lastpc")));
-	}
-=======
         if (i+1 <= ciidx) {
           pc = mrb->cibase[i+1].pc;
         }
         else {
           pc = (mrb_code*)mrb_voidp(mrb_obj_iv_get(mrb, mrb->exc, mrb_intern(mrb, "lastpc")));
         }
->>>>>>> master
         if (irep->iseq <= pc && pc < irep->iseq + irep->ilen) {
           line = irep->lines[pc - irep->iseq - 1];
         }
@@ -338,47 +210,17 @@ showcallinfo(mrb_state *mrb, int safe)
     method = mrb_sym2name(mrb, ci->mid);
     if (method) {
       const char *cn = mrb_class_name(mrb, ci->proc->target_class);
-<<<<<<< HEAD
-      const char *block_in = "";
-      char args[128];
-
-      if (i > 1 && !mrb_nil_p(stbase[ci->stackidx+1+ci[-1].argc])) {
-        block_in = "block in ";
-      }
-
-      args[0] = '\0';
-      if (i > 0 && copied) {
-        if (block_in[0])
-          inspect_args(mrb, args, sizeof(args), NULL, ci, stbase);
-        else
-          inspect_args(mrb, args, sizeof(args), method, ci, stbase);
-      }
-    
-      if (cn) {
-	printf("\t[%d] %s:%d:in `%s%s%s%s'%s\n",
-	       i, filename, line, block_in, cn, sep, method, args);
-      }
-      else {
-	printf("\t[%d] %s:%d:in `%s%s'%s\n",
-	       i, filename, line, block_in, method, args);
-=======
 
       if (cn) {
         printf("\t[%d] %s:%d:in %s%s%s\n", i, filename, line, cn, sep, method);
       }
       else {
         printf("\t[%d] %s:%d:in %s\n", i, filename, line, method);
->>>>>>> master
       }
     }
     else {
       printf("\t[%d] %s:%d\n", i, filename, line);
     }
-  }
-
-  if (copied) {
-    free(cibase);
-    free(stbase);
   }
 }
 
@@ -412,30 +254,6 @@ main(int argc, char **argv)
   MRUBY_BIN = mrb_str_new(mrb, argv[0], strlen(argv[0]));
   mrb_define_global_const(mrb, "MRUBY_BIN", MRUBY_BIN);
 
-#ifdef ENABLE_REQUIRE
-  mrb_value LOAD_PATH = mrb_gv_get(mrb, mrb_intern(mrb, "$:"));
-  for (i = 0; i < args.load_path_len; i++) {
-    mrb_value tmp = mrb_str_new2(mrb, args.load_path[i]);
-    mrb_ary_unshift(mrb, LOAD_PATH, tmp);
-  }
-
-  if (mrb_str_cmp(mrb, MRUBY_BIN, mrb_str_new2(mrb, "mruby")) != 0) {
-    int len = strrchr(RSTRING_PTR(MRUBY_BIN), '/') - RSTRING_PTR(MRUBY_BIN);
-    mrb_value extdir = mrb_str_substr(mrb, mrb_str_dup(mrb, MRUBY_BIN), 0, len);
-    mrb_str_cat2(mrb, extdir, "/../ext");
-
-    if (mrb_obj_eq(mrb, mrb_file_exist(mrb, extdir), mrb_true_value())) {
-      mrb_ary_push(mrb, LOAD_PATH, extdir);
-    }
-  }
-
-  extern mrb_value mrb_require(mrb_state *mrb, mrb_value filename);
-  for (i = 0; i < args.library_len; i++) {
-    mrb_value tmp = mrb_str_new2(mrb, args.library[i]);
-    mrb_require(mrb, tmp);
-  }
-#endif /* ENABLE_REQUIRE */
-
   if (args.mrbfile) {
     n = mrb_read_irep_file(mrb, args.rfp);
     if (n < 0) {
@@ -445,7 +263,7 @@ main(int argc, char **argv)
       mrb_run(mrb, mrb_proc_new(mrb, mrb->irep[n]), mrb_top_self(mrb));
       n = 0;
       if (mrb->exc) {
-        showcallinfo(mrb, args.safetrace);
+        showcallinfo(mrb);
         p(mrb, mrb_obj_value(mrb->exc));
         n = -1;
       }
@@ -462,31 +280,22 @@ main(int argc, char **argv)
       c->no_exec = 1;
 
     if (args.rfp) {
-<<<<<<< HEAD
-      mrbc_filename(mrb, c, args.cmdline ? args.cmdline : "-");
-      mrb_gv_set(mrb, mrb_intern(mrb, "$0"), mrb_str_new2(mrb, c->filename));
-=======
       char *cmdline;
       cmdline = args.cmdline ? args.cmdline : "-";
       mrbc_filename(mrb, c, cmdline);
       mrb_gv_set(mrb, zero_sym, mrb_str_new_cstr(mrb, cmdline));
->>>>>>> master
       v = mrb_load_file_cxt(mrb, args.rfp, c);
     }
     else {
       mrbc_filename(mrb, c, "-e");
-<<<<<<< HEAD
-      mrb_gv_set(mrb, mrb_intern(mrb, "$0"), mrb_str_new2(mrb, c->filename));
-=======
       mrb_gv_set(mrb, zero_sym, mrb_str_new(mrb, "-e", 2));
->>>>>>> master
       v = mrb_load_string_cxt(mrb, args.cmdline, c);
     }
 
     mrbc_context_free(mrb, c);
     if (mrb->exc) {
       if (!mrb_undef_p(v)) {
-        showcallinfo(mrb, args.safetrace);
+        showcallinfo(mrb);
         p(mrb, mrb_obj_value(mrb->exc));
       }
       n = -1;
