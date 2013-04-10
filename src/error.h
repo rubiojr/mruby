@@ -7,18 +7,7 @@
 #ifndef MRUBY_ERROR_H
 #define MRUBY_ERROR_H
 
-<<<<<<< HEAD
-struct RException {
-  MRB_OBJECT_HEADER;
-};
-
-#ifndef ENABLE_ERRNO
 void mrb_sys_fail(mrb_state *mrb, const char *mesg);
-#endif
-void mrb_bug_errno(const char*, int);
-=======
-void mrb_sys_fail(mrb_state *mrb, const char *mesg);
->>>>>>> master
 int sysexit_status(mrb_state *mrb, mrb_value err);
 mrb_value mrb_exc_new3(mrb_state *mrb, struct RClass* c, mrb_value str);
 mrb_value make_exception(mrb_state *mrb, int argc, mrb_value *argv, int isstr);

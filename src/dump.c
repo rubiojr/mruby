@@ -111,24 +111,8 @@ write_pool_block(mrb_state *mrb, mrb_irep *irep, uint8_t *buf)
   uint8_t *cur = buf;
   size_t len;
   mrb_value str;
-<<<<<<< HEAD
-  char *buf_top = buf;
-  char *char_buf;
-  uint16_t buf_size =0;
-  uint16_t len =0;
-  int ai;
-  int result;
-
-  buf_size = MRB_DUMP_DEFAULT_STR_LEN;
-  char_buf = (char *)mrb_malloc(mrb, buf_size);
-  if (char_buf == NULL) {
-    result = MRB_DUMP_GENERAL_FAILURE;
-    goto error_exit;
-  }
-=======
   const char *char_ptr;
   char char_buf[30];
->>>>>>> master
 
   cur += uint32_to_bin(irep->plen, cur); /* number of pool */
 
@@ -155,28 +139,6 @@ write_pool_block(mrb_state *mrb, mrb_irep *irep, uint8_t *buf)
       len = RSTRING_LEN(str);
       break;
 
-<<<<<<< HEAD
-#ifdef ENABLE_REGEXP
-    case MRB_TT_REGEX:
-      ai = mrb_gc_arena_save(mrb);
-      str = mrb_reg_to_s(mrb, irep->pool[pool_no]);
-      mrb_gc_arena_restore(mrb, ai);
-      len = str_dump_len(RSTRING_PTR(str), RSTRING_LEN(str), type);
-      if ( len > buf_size - 1) {
-        buf_size = len + 1;
-        char_buf = mrb_realloc(mrb, char_buf, buf_size);
-        if (char_buf == NULL) {
-          result = MRB_DUMP_GENERAL_FAILURE;
-          goto error_exit;
-        }
-        memset(char_buf, 0, buf_size);
-      }
-      str_dump(RSTRING_PTR(str), char_buf, RSTRING_LEN(str), type);
-      break;
-#endif
-
-=======
->>>>>>> master
     default:
       continue;
     }
@@ -351,26 +313,8 @@ mrb_write_section_lineno_header(mrb_state *mrb, uint32_t section_size, uint16_t 
   return MRB_DUMP_OK;
 }
 
-<<<<<<< HEAD
-static mrb_value
-dump_rite_header_str(mrb_state *mrb, int top, uint32_t rbds)
-{
-  int rc = MRB_DUMP_OK;
-  rite_file_header file_header;
-
-  rc = calc_rite_file_header(mrb, top, rbds, &file_header);
-  if (rc != MRB_DUMP_OK)
-    return mrb_nil_value();
-
-  return mrb_str_new(mrb, (char*)&file_header, (int)sizeof(file_header));
-}
-
-static int
-write_irep_record(mrb_state *mrb, int irep_no, char* bin, uint32_t *rlen, int type)
-=======
 static size_t
 get_debug_record_size(mrb_state *mrb, mrb_irep *irep)
->>>>>>> master
 {
   size_t size = 0;
 
@@ -532,60 +476,11 @@ error_exit:
   return result;
 }
 
-<<<<<<< HEAD
-static int
-dump_debug_info(mrb_state *mrb, int irep_no)
-{
-  mrb_irep *irep;
-  int i, n, ai, ret = 0;
-  const char *mrb_debug_dump_mark = "**MRB_DEBUG_DUMP**";
-  irep = mrb->irep[irep_no];
-
-  if (irep->lines == NULL) {
-    return ret;
-  }
-
-  ai = mrb_gc_arena_save(mrb);
-  n = irep->ilen;
-
-  irep->pool = mrb_realloc(mrb, irep->pool, sizeof(mrb_value)*(irep->plen+3+n));
-  if (irep->pool == NULL) {
-    ret = -1;
-    goto error_exit;
-  }
-
-  irep->pool[irep->plen++] = mrb_str_new2(mrb, mrb_debug_dump_mark);
-
-  /* set filename */
-  if (irep->filename == NULL) {
-    irep->pool[irep->plen++] = mrb_nil_value();
-  } else {
-    irep->pool[irep->plen++] = mrb_str_new2(mrb, irep->filename);
-  }
-
-  /* set lines size */
-  irep->pool[irep->plen++] = mrb_fixnum_value(n);
-
-  /* set lines data */
-  for (i=0; i<n; i++) {
-    irep->pool[irep->plen++] = mrb_fixnum_value(irep->lines[i]);
-  }
-
-error_exit:
-  mrb_gc_arena_restore(mrb, ai);
-
-  return ret;
-}
-
-int
-mrb_dump_irep(mrb_state *mrb, int top, FILE* fp, int debug)
-=======
 
 #ifdef ENABLE_STDIO
 
 int
 mrb_dump_irep_binary(mrb_state *mrb, size_t start_index, int debug_info, FILE* fp)
->>>>>>> master
 {
   uint8_t *bin = NULL;
   size_t bin_size = 0;
@@ -600,19 +495,9 @@ mrb_dump_irep_binary(mrb_state *mrb, size_t start_index, int debug_info, FILE* f
     fwrite(bin, bin_size, 1, fp);
   }
 
-<<<<<<< HEAD
-  for (irep_no=top; irep_no<mrb->irep_len; irep_no++) {
-    if (debug && (rc = dump_debug_info(mrb, irep_no)) != 0)
-      return rc;
-
-    rc = dump_irep_record(mrb, irep_no, fp, &rlen);
-    if (rc != MRB_DUMP_OK)
-      return rc;
-=======
   mrb_free(mrb, bin);
   return result;
 }
->>>>>>> master
 
 static int
 is_valid_c_symbol_name(const char *name)
@@ -656,85 +541,4 @@ mrb_dump_irep_cfunc(mrb_state *mrb, size_t start_index, int debug_info, FILE *fp
   return result;
 }
 
-<<<<<<< HEAD
-
-static mrb_value
-dump_irep_record_str(mrb_state *mrb, int irep_no, uint32_t *rlen)
-{
-  int rc;
-  char *buf;
-  uint32_t irep_record_size;
-  mrb_irep *irep = mrb->irep[irep_no];
-
-  if (irep == NULL)
-    return mrb_nil_value();
-
-  /* buf alloc */
-  irep_record_size = get_irep_record_size(mrb, irep_no, DUMP_TYPE_HEX);
-  if (irep_record_size == 0)
-    return mrb_nil_value();
-
-  buf = (char*) mrb_calloc(mrb, 1, irep_record_size);
-  if (buf == NULL)
-    return mrb_nil_value();
-
-  rc = write_irep_record(mrb, irep_no, buf, rlen, DUMP_TYPE_HEX);
-  if (rc != MRB_DUMP_OK) {
-    mrb_free(mrb, buf);
-    return mrb_nil_value();
-  }
-
-  return mrb_str_new(mrb, buf, (int)irep_record_size);
-}
-
-mrb_value
-mrb_dump_irep_str(mrb_state *mrb, int top, int debug)
-{
-  int rc;
-  uint32_t rbds=0; /* size of Rite Binary Data */
-  uint32_t rlen=0; /* size of irep record */
-  int irep_no;
-  mrb_value bin = mrb_str_new2(mrb, "");
-  mrb_value str;
-
-  if (mrb == NULL || top < 0 || top >= mrb->irep_len) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "invalid argument of mrb_dump_irep_str");
-    return mrb_nil_value();
-  }
-
-  if (debug) {
-    for (irep_no=top; irep_no<mrb->irep_len; irep_no++) {
-      if ((rc = dump_debug_info(mrb, irep_no)) != MRB_DUMP_OK) {
-        mrb_raise(mrb, E_RUNTIME_ERROR, "mrb_dump_irep_str failed.");
-        return mrb_nil_value();
-      }
-    }
-  }
-
-  for (irep_no=top; irep_no<mrb->irep_len; irep_no++) {
-    str = dump_irep_record_str(mrb, irep_no, &rlen);
-    if (mrb_nil_p(str)) {
-      mrb_raise(mrb, E_RUNTIME_ERROR, "mrb_dump_irep_str failed.");
-      return mrb_nil_value();
-    }
-    bin = mrb_str_append(mrb, bin, str);
-
-    rbds += rlen;
-  }
-
-  /* end of file */
-  bin = mrb_str_append(mrb, bin, mrb_str_new(mrb, "00000000", 8));
-
-  /* header */
-  str = dump_rite_header_str(mrb, top, rbds);
-  if (mrb_nil_p(str)) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "mrb header calc failed");
-    return mrb_nil_value();
-  }
-  bin = mrb_str_append(mrb, str, bin);
-
-  return bin;
-}
-=======
 #endif /* ENABLE_STDIO */
->>>>>>> master

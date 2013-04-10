@@ -926,7 +926,6 @@ mrb_define_global_const(mrb_state *mrb, const char *name, mrb_value val)
   mrb_define_const(mrb, mrb->object_class, name, val);
 }
 
-<<<<<<< HEAD
 static mrb_sym
 mrb_gv_alias_name_check(mrb_state *mrb, mrb_sym sym)
 {
@@ -948,7 +947,8 @@ mrb_gv_alias_name_check(mrb_state *mrb, mrb_sym sym)
 
   mrb_gc_arena_restore(mrb, ai);
   return sym;
-=======
+}
+
 static int
 const_i(mrb_state *mrb, mrb_sym sym, mrb_value v, void *p)
 {
@@ -986,7 +986,6 @@ mrb_mod_constants(mrb_state *mrb, mrb_value mod)
     if (c == mrb->object_class) break;
   }
   return ary;
->>>>>>> master
 }
 
 mrb_value
