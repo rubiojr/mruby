@@ -47,24 +47,8 @@
 /* page size of memory pool */
 //#define POOL_PAGE_SIZE 16000
 
-<<<<<<< HEAD
-/* -DDISABLE_XXXX to drop the feature */
-//#define DISABLE_REGEXP	        /* regular expression classes */
-//#define DISABLE_SPRINTF	/* Kernel.sprintf method */
-//#define DISABLE_MATH		/* Math functions */
-//#define DISABLE_TIME		/* Time class */
-//#define DISABLE_STRUCT	/* Struct class */
-//#define DISABLE_STDIO		/* use of stdio */
-//#define DISABLE_IO
-//#define DISABLE_SOCKET
-//#define DISABLE_ERRNO
-//#define DISABLE_REQUIRE
-
-#define INCLUDE_ENCODING
-=======
 /* initial minimum size for string buffer */
 //#define MRB_STR_BUF_MIN_SIZE 128
->>>>>>> master
 
 /* array size for parser buffer */
 //#define MRB_PARSER_BUF_SIZE 1024
@@ -120,30 +104,8 @@ typedef short mrb_sym;
 #ifndef DISABLE_STDIO
 #define ENABLE_STDIO
 #endif
-<<<<<<< HEAD
-#ifndef DISABLE_IO
-#define ENABLE_IO
-#endif
-#ifndef DISABLE_SOCKET
-#define ENABLE_SOCKET
-#endif
-#ifndef DISABLE_ERRNO
-#define ENABLE_ERRNO
-#endif
-#ifndef DISABLE_REQUIRE
-#define ENABLE_REQUIRE
-#endif
-
-#ifndef FALSE
-# define FALSE 0
-#endif
-
-#ifndef TRUE
-# define TRUE 1
-=======
 #ifndef ENABLE_DEBUG
 #define DISABLE_DEBUG
->>>>>>> master
 #endif
 
 #ifdef _MSC_VER

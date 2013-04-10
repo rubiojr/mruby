@@ -109,14 +109,7 @@ struct mrb_parser_state {
   int column;
 
   enum mrb_lex_state_enum lstate;
-<<<<<<< HEAD
-  int sterm;
-#ifdef ENABLE_REGEXP
-  int regexp;
-#endif
-=======
   mrb_ast_node *lex_strterm; /* (type nest_level beg . end) */
->>>>>>> master
 
   unsigned int cond_stack;
   unsigned int cmdarg_stack;

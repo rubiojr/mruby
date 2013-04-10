@@ -71,18 +71,11 @@ mrb_value mrb_str_append(mrb_state *mrb, mrb_value str, mrb_value str2);
 int mrb_str_cmp(mrb_state *mrb, mrb_value str1, mrb_value str2);
 char *mrb_str_to_cstr(mrb_state *mrb, mrb_value str);
 
-<<<<<<< HEAD
-#ifdef ENABLE_REGEXP
-mrb_value mrb_str_subseq(mrb_state *mrb, mrb_value str, int beg, int len);
-mrb_value mrb_str_size(mrb_state *mrb, mrb_value self);
-#endif
-=======
 /* For backward compatibility */
 static inline mrb_value
 mrb_str_cat2(mrb_state *mrb, mrb_value str, const char *ptr) {
   return mrb_str_cat_cstr(mrb, str, ptr);
 }
->>>>>>> master
 
 #if defined(__cplusplus)
 }  /* extern "C" { */
