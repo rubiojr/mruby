@@ -13,17 +13,8 @@
 #include "mruby/numeric.h"
 #include "mruby/string.h"
 #include "node.h"
-<<<<<<< HEAD
-#include <string.h>
-#include <stdlib.h>
-#include <ctype.h>
-#ifdef ENABLE_REGEXP
-#include "re.h"
-#endif
-=======
 #include "opcode.h"
 #include "re.h"
->>>>>>> master
 
 typedef mrb_ast_node node;
 typedef struct mrb_parser_state parser_state;
@@ -2042,26 +2033,6 @@ codegen(codegen_scope *s, node *tree, int val)
     }
     break;
 
-<<<<<<< HEAD
-#ifdef ENABLE_REGEXP
-  case NODE_REGX:
-    if (val) {
-      node *reg_beg = (node *)tree->car;
-      node *reg_body = (node *)reg_beg->cdr;
-
-      char *str = (char *)reg_body->car;
-      size_t len = (intptr_t)reg_body->cdr;
-      size_t opts = (intptr_t)tree->cdr;
-      
-      int off = new_lit(s,
-          mrb_reg_new_literal(s->mrb, mrb_str_new(s->mrb, str, len), opts));
-
-      genop(s, MKOP_ABx(OP_LOADL, cursp(), off));
-      push();
-    }
-    break;
-#endif /* ENABLE_REGEXP */
-=======
   case NODE_WORDS:
     gen_literal_array(s, tree, FALSE, val);
     break;
@@ -2175,7 +2146,6 @@ codegen(codegen_scope *s, node *tree, int val)
       }
     }
     break;
->>>>>>> master
 
   case NODE_SYM:
     if (val) {

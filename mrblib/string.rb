@@ -28,15 +28,8 @@ class String
   #
   # ISO 15.2.10.5.18
   def gsub(*args, &block)
-<<<<<<< HEAD
-    if Object.const_defined?(:Regexp) && args[0].is_a?(Regexp)
-      _gsub(*args, &block)
-    elsif args.size == 2
-      split(args[0]).join(args[1])
-=======
     if args.size == 2
       split(args[0], -1).join(args[1])
->>>>>>> master
     elsif args.size == 1 && block
       split(args[0], -1).join(block.call(args[0]))
     else
