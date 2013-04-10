@@ -6,17 +6,9 @@ MRuby.each_target do
   exec = exefile("#{current_build_dir}/mrbtest")
   clib = "#{current_build_dir}/mrbtest.c"
   mlib = clib.ext(exts.object)
-<<<<<<< HEAD
-  mrbs = Dir.glob("#{dir}/t/*.rb")
-  init = "#{dir}/init_mrbtest.c"
-  asslib = "#{dir}/assert.rb"
-  catrb  = "#{build_dir}/#{dir}/mrbtest.rb"
-  catmrb = "#{build_dir}/#{dir}/mrbtest.mrb"
-=======
   mrbs = Dir.glob("#{current_dir}/t/*.rb")
   init = "#{current_dir}/init_mrbtest.c"
   asslib = "#{current_dir}/assert.rb"
->>>>>>> master
 
   mrbtest_lib = libfile("#{current_build_dir}/mrbtest")
   file mrbtest_lib => [mlib, gems.map(&:test_objs), gems.map { |g| g.test_rbireps.ext(exts.object) }].flatten do |t|

@@ -19,15 +19,9 @@ struct _args {
   char *filename;
   char *initname;
   char *ext;
-<<<<<<< HEAD
-  int check_syntax : 1;
-  int verbose      : 1;
-  int debug        : 1;
-=======
   mrb_bool check_syntax : 1;
   mrb_bool verbose      : 1;
   mrb_bool debug_info   : 1;
->>>>>>> master
 };
 
 static void
@@ -117,11 +111,7 @@ parse_args(mrb_state *mrb, int argc, char **argv, struct _args *args)
         args->verbose = 1;
         break;
       case 'g':
-<<<<<<< HEAD
-        args->debug = 1;
-=======
         args->debug_info = 1;
->>>>>>> master
         break;
       case '-':
         if (strcmp((*argv) + 2, "version") == 0) {
@@ -232,11 +222,7 @@ main(int argc, char **argv)
     }
   }
   else {
-<<<<<<< HEAD
-    n = mrb_dump_irep(mrb, n, args.wfp, args.debug);
-=======
     n = mrb_dump_irep_binary(mrb, n, args.debug_info, args.wfp);
->>>>>>> master
   }
 
   cleanup(mrb, &args);
