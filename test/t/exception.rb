@@ -301,29 +301,6 @@ assert('Exception 17') do
   end == 2
 end
 
-<<<<<<< HEAD
-if $full_test
-  # very deeply recursive function that stil returns albeit very deeply so
-  $test_infinite_recursion    = 0
-  TEST_INFINITE_RECURSION_MAX = 100000
-  def test_infinite_recursion
-    $test_infinite_recursion += 1
-    if $test_infinite_recursion > TEST_INFINITE_RECURSION_MAX
-      return $test_infinite_recursion
-    end
-    test_infinite_recursion
-  end
-
-  assert('Infinite recursion should result in an exception being raised') do
-    a = begin
-          test_infinite_recursion
-        rescue
-          :ok
-        end
-    # OK if an exception was caught, otherwise a number will be stored in a
-    a == :ok
-  end
-=======
 assert('Exception 18') do
   begin
     0
@@ -340,5 +317,4 @@ end
 
 assert('Exception#inspect without message') do
   Exception.new.inspect
->>>>>>> master
 end
