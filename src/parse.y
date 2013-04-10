@@ -25,7 +25,6 @@
 #include "mruby/compile.h"
 #include "mruby/proc.h"
 #include "node.h"
-#include "re.h"
 
 #define YYLEX_PARAM p
 
@@ -732,16 +731,6 @@ new_dsym(parser_state *p, node *a)
   return cons((node*)NODE_DSYM, new_dstr(p, a));
 }
 
-<<<<<<< HEAD
-#ifdef ENABLE_REGEXP
-// (:regex . a)
-static node*
-new_regx(parser_state *p, node *a, int opt)
-{
-  return cons((node*)NODE_REGX, cons(a, (node*)(intptr_t)opt));
-}
-#endif
-=======
 // (:str . (a . a))
 static node*
 new_regx(parser_state *p, const char *p1, const char* p2)
@@ -755,7 +744,6 @@ new_dregx(parser_state *p, node *a, node *b)
 {
   return cons((node*)NODE_DREGX, cons(a, b));
 }
->>>>>>> master
 
 // (:backref . n)
 static node*
@@ -820,18 +808,6 @@ call_bin_op(parser_state *p, node *recv, char *m, node *arg1)
   return new_call(p, recv, intern(m), list1(list1(arg1)));
 }
 
-<<<<<<< HEAD
-/*
-// (:match (a . b))
-static node*
-match_op(parser_state *p, node *a, node *b)
-{
-  return cons((node*)NODE_MATCH, cons((node*)a, (node*)b));
-}
-*/
-
-=======
->>>>>>> master
 static void
 args_with_block(parser_state *p, node *a, node *b)
 {
@@ -1807,17 +1783,7 @@ arg		: lhs '=' arg
 		    }
 		| arg tMATCH arg
 		    {
-<<<<<<< HEAD
-		      /* $$ = match_op(p, $1, $3); */
 		      $$ = call_bin_op(p, $1, "=~", $3);
-#if 0
-		      if (nd_type($1) == NODE_LIT && TYPE($1->nd_lit) == T_REGEXP) {
-			$$ = reg_named_capture_assign($1->nd_lit, $$);
-		      }
-#endif
-=======
-		      $$ = call_bin_op(p, $1, "=~", $3);
->>>>>>> master
 		    }
 		| arg tNMATCH arg
 		    {
@@ -2652,8 +2618,6 @@ regexp		: tREGEXP_BEG tREGEXP
 		    {
 			$$ = $2;
 		    }
-<<<<<<< HEAD
-=======
 		| tREGEXP_BEG string_rep tREGEXP
 		    {
 		      $$ = new_dregx(p, $2, $3);
@@ -2691,7 +2655,6 @@ words		: tWORDS_BEG tSTRING
 		    {
 		      $$ = new_words(p, push($2, $3));
 		    }
->>>>>>> master
 		;
 
 
@@ -3533,21 +3496,9 @@ read_escape(parser_state *p)
     return c;
 
   case 'b':	/* backspace */
-#ifdef ENABLE_REGEXP
-    if (p->regexp) {
-      tokadd(p, '\\');
-      return 'b';
-    }
-#endif
     return '\010';
 
   case 's':	/* space */
-#ifdef ENABLE_REGEXP
-    if (p->regexp) {
-      tokadd(p, '\\');
-      return 's';
-    }
-#endif
     return ' ';
 
   case 'M':
@@ -3585,26 +3536,14 @@ read_escape(parser_state *p)
     return '\0';
 
   default:
-#ifdef ENABLE_REGEXP
-    if (p->regexp) {
-      tokadd(p, '\\');
-    }
-#endif
     return c;
   }
 }
 
-<<<<<<< HEAD
-#ifdef ENABLE_REGEXP
-static int
-regx_options(parser_state *p)
-=======
 
 static int
 parse_string(parser_state *p)
->>>>>>> master
 {
-  int options = 0;
   int c;
   string_type type = (string_type)(intptr_t)p->lex_strterm->car;
   int nest_level = (intptr_t)p->lex_strterm->cdr->car;
@@ -3613,46 +3552,6 @@ parse_string(parser_state *p)
   parser_heredoc_info *hinf = (type & STR_FUNC_HEREDOC) ? parsing_heredoc_inf(p) : NULL;
 
   newtok(p);
-<<<<<<< HEAD
-  while (c = nextc(p), ISALPHA(c)) {
-    switch (c) {
-    case 'i':
-      options |= RE_OPTION_IGNORECASE;
-      break;
-    case 'x':
-      options |= RE_OPTION_EXTENDED;
-      break;
-    case 'm':
-      options |= RE_OPTION_MULTILINE;
-      break;
-    default:
-      tokadd(p, c);
-      break;
-    }
-  }
-
-  pushback(p, c);
-  if (toklen(p)) {
-    char msg[128];
-    tokfix(p);
-    snprintf(msg, sizeof(msg), "unknown regexp option %s - %s",
-        toklen(p) > 1 ? "s" : "", tok(p));
-    yyerror(p, msg);
-  }
-
-  return options;
-}
-#endif
-
-static int
-parse_string(parser_state *p, int term)
-{
-  int c;
-
-  newtok(p);
-  while ((c = nextc(p)) != term) {
-    if (c  == -1) {
-=======
   while ((c = nextc(p)) != end || nest_level != 0) {
     if (hinf && (c == '\n' || c == -1)) {
       int line_head;
@@ -3686,7 +3585,6 @@ parse_string(parser_state *p, int term)
       return tSTRING_MID;
     }
     if (c == -1) {
->>>>>>> master
       yyerror(p, "unterminated string meets end of file");
       return 0;
     }
@@ -3778,21 +3676,6 @@ parse_string(parser_state *p, int term)
 
   tokfix(p);
   p->lstate = EXPR_END;
-<<<<<<< HEAD
-  p->sterm = 0;
-
-#ifdef ENABLE_REGEXP
-  if (p->regexp) {
-    node *str = new_str(p, tok(p), toklen(p));
-    int options = regx_options(p);
-
-    yylval.nd = new_regx(p, str, options);
-    p->regexp = 0;
-
-    return tREGEXP;
-  }
-#endif
-=======
   end_strterm(p);
 
   if (type & STR_FUNC_XQUOTE) {
@@ -3830,7 +3713,6 @@ parse_string(parser_state *p, int term)
 
     return tREGEXP;
   }
->>>>>>> master
 
   yylval.nd = new_str(p, tok(p), toklen(p));
   return tSTRING;
@@ -4635,14 +4517,6 @@ parser_yylex(parser_state *p)
   case '/':
     if (IS_BEG()) {
       p->lex_strterm = new_strterm(p, str_regexp, '/', 0);
-<<<<<<< HEAD
-#endif
-#ifdef ENABLE_REGEXP
-      p->regexp = 1;
-      p->sterm = '/';
-#endif
-=======
->>>>>>> master
       return tREGEXP_BEG;
     }
     if ((c = nextc(p)) == '=') {
@@ -4653,14 +4527,6 @@ parser_yylex(parser_state *p)
     pushback(p, c);
     if (IS_SPCARG(c)) {
       p->lex_strterm = new_strterm(p, str_regexp, '/', 0);
-<<<<<<< HEAD
-#endif
-#ifdef ENABLE_REGEXP
-      p->regexp = 1;
-      p->sterm = '/';
-#endif
-=======
->>>>>>> master
       return tREGEXP_BEG;
     }
     if (p->lstate == EXPR_FNAME || p->lstate == EXPR_DOT) {
@@ -4825,14 +4691,6 @@ parser_yylex(parser_state *p)
 
       case 'r':
 	p->lex_strterm = new_strterm(p, str_regexp, term, paren);
-<<<<<<< HEAD
-#endif
-#ifdef ENABLE_REGEXP
-	p->regexp = 1;
-	p->sterm = term;
-#endif
-=======
->>>>>>> master
 	return tREGEXP_BEG;
 
       case 's':
@@ -5920,10 +5778,6 @@ parser_dump(mrb_state *mrb, node *tree, int offset)
     dump_recur(mrb, tree, offset+1);
     break;
 
-<<<<<<< HEAD
-  case NODE_REGX:
-    printf("NODE_REGX /%s/\n", (char*)tree->car->cdr->car);
-=======
   case NODE_XSTR:
     printf("NODE_XSTR \"%s\" len %d\n", (char*)tree->car, (int)(intptr_t)tree->cdr);
     break;
@@ -5944,7 +5798,6 @@ parser_dump(mrb_state *mrb, node *tree, int offset)
     printf("tail: %s\n", (char*)tree->cdr->cdr->car);
     dump_prefix(offset);
     printf("opt: %s\n", (char*)tree->cdr->cdr->cdr);
->>>>>>> master
     break;
 
   case NODE_SYM:

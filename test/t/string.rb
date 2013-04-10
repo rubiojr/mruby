@@ -311,7 +311,6 @@ assert('String#rindex', '15.2.10.5.31') do
     'abcabc'.rindex('a', 1) == 0 and 'abcabc'.rindex('a', 4) == 3
 end
 
-<<<<<<< HEAD
 if Object.const_defined?(:Regexp)
   # TODO Broken ATM assert('String#scan', '15.2.10.5.32') do
   assert('String#scan', '15.2.10.5.32') do
@@ -330,9 +329,6 @@ if Object.const_defined?(:Regexp)
     result4 == [["ba", "r"], ["ba", "z"], ["ba", "r"], ["ba", "z"]]
   end
 end
-=======
-# 'String#scan', '15.2.10.5.32' will be tested in mrbgems.
->>>>>>> master
 
 assert('String#size', '15.2.10.5.33') do
   'abc'.size == 3
