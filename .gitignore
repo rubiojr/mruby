@@ -16,8 +16,4 @@ cscope.out
 /src/y.tab.c
 /bin
 /build
-<<<<<<< HEAD
-/tmp
-=======
 /lib
->>>>>>> master
