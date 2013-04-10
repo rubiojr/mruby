@@ -5,13 +5,6 @@
 */
 
 #include "mruby.h"
-<<<<<<< HEAD
-#include <string.h>
-#include "mruby/string.h"
-#include <stdio.h>
-#include "mruby/array.h"
-=======
->>>>>>> master
 #include "mruby/class.h"
 #include "mruby/numeric.h"
 #include "mruby/string.h"
