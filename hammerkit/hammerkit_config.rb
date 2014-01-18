@@ -11,6 +11,8 @@ MRuby::Build.new do |conf|
   conf.gem :git => 'https://github.com/luisbebop/mruby-polarssl.git'
   conf.gem :git => 'https://github.com/matsumoto-r/mruby-simplehttp'
   conf.gem :git => 'https://github.com/rubiojr/mruby-shutils'
+  
+  conf.gem :core => 'mruby-hammerkit'
 end
 
 # Define cross build settings
@@ -19,8 +21,6 @@ MRuby::CrossBuild.new('i386') do |conf|
 
   conf.cc.flags << "-m32"
   conf.linker.flags << "-m32"
-
-  # conf.build_mrbtest_lib_only
 
   # include the IIJ gembox
   conf.gembox 'iij'
@@ -32,4 +32,6 @@ MRuby::CrossBuild.new('i386') do |conf|
   conf.gem :git => 'https://github.com/luisbebop/mruby-polarssl.git'
   conf.gem :git => 'https://github.com/matsumoto-r/mruby-simplehttp'
   conf.gem :git => 'https://github.com/rubiojr/mruby-shutils'
+
+  conf.gem :core => 'mruby-hammerkit'
 end
