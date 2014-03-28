@@ -15,23 +15,33 @@
 #include "mruby/string.h"
 
 #ifdef ENABLE_READLINE
-#include <limits.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#define MIRB_ADD_HISTORY(line) add_history(line)
+#define MIRB_READLINE(ch) readline(ch)
+#define MIRB_WRITE_HISTORY(path) write_history(path)
+#define MIRB_READ_HISTORY(path) read_history(path)
+#define MIRB_USING_HISTORY() using_history()
+#elif ENABLE_LINENOISE
+#define ENABLE_READLINE
+#include <linenoise.h>
+#define MIRB_ADD_HISTORY(line) linenoiseHistoryAdd(line)
+#define MIRB_READLINE(ch) linenoise(ch)
+#define MIRB_WRITE_HISTORY(path) linenoiseHistorySave(path)
+#define MIRB_READ_HISTORY(path) linenoiseHistoryLoad(history_path)
+#define MIRB_USING_HISTORY()
 #endif
-
-#ifdef ENABLE_REQUIRE
-#include "mruby/array.h"
-#include "mruby/string.h"
-#include "mruby/variable.h"
-extern mrb_value mrb_file_exist(mrb_state *mrb, mrb_value fname);
-#endif
-
+  
 #ifdef ENABLE_READLINE
+#include <limits.h>
 static const char *history_file_name = ".mirb_history";
 char history_path[PATH_MAX];
 #endif
 
+#ifdef ENABLE_REQUIRE
+#include "mruby/variable.h"
+extern mrb_value mrb_file_exist(mrb_state *mrb, mrb_value fname);
+#endif
 
 static void
 p(mrb_state *mrb, mrb_value obj, int prompt)
@@ -54,7 +64,7 @@ p(mrb_state *mrb, mrb_value obj, int prompt)
 static mrb_bool
 is_code_block_open(struct mrb_parser_state *parser)
 {
-  int code_block_open = FALSE;
+  mrb_bool code_block_open = FALSE;
 
   /* check for heredoc */
   if (parser->parsing_heredoc != NULL) return TRUE;
@@ -224,11 +234,10 @@ cleanup(mrb_state *mrb, struct _args *args)
 static void
 print_hint(void)
 {
-  printf("mirb - Embeddable Interactive Ruby Shell\n");
-  printf("\nThis is a very early version, please test and report errors.\n");
-  printf("Thanks :)\n\n");
+  printf("mirb - Embeddable Interactive Ruby Shell\n\n");
 }
 
+#ifndef ENABLE_READLINE
 /* Print the command line prompt of the REPL */
 static void
 print_cmdline(int code_block_open)
@@ -240,6 +249,7 @@ print_cmdline(int code_block_open)
     printf("> ");
   }
 }
+#endif 
 
 void mrb_codedump_all(mrb_state*, struct RProc*);
 
@@ -260,11 +270,10 @@ main(int argc, char **argv)
   mrb_value result;
   struct _args args;
   int n;
-  int code_block_open = FALSE;
+  mrb_bool code_block_open = FALSE;
   mrb_value MIRB_BIN;
   int ai;
-  int first_command = 1;
-  unsigned int nregs;
+  unsigned int stack_keep = 0;
 
   /* new interpreter instance */
   mrb = mrb_open();
@@ -310,7 +319,7 @@ main(int argc, char **argv)
   ai = mrb_gc_arena_save(mrb);
 
 #ifdef ENABLE_READLINE
-  using_history();
+  MIRB_USING_HISTORY();
   home = getenv("HOME");
 #ifdef _WIN32
   if (!home)
@@ -320,7 +329,7 @@ main(int argc, char **argv)
     strcpy(history_path, home);
     strcat(history_path, "/");
     strcat(history_path, history_file_name);
-    read_history(history_path);
+    MIRB_READ_HISTORY(history_path);
   }
 #endif
 
@@ -341,34 +350,25 @@ main(int argc, char **argv)
 
     last_code_line[char_index] = '\0';
 #else
-    char* line = readline(code_block_open ? "* " : "> ");
+    char* line = MIRB_READLINE(code_block_open ? "* " : "> ");
     if (line == NULL) {
       printf("\n");
       break;
     }
     strncpy(last_code_line, line, sizeof(last_code_line)-1);
-    add_history(line);
+    MIRB_ADD_HISTORY(line);
     free(line);
 #endif
 
-    if ((strcmp(last_code_line, "quit") == 0) || (strcmp(last_code_line, "exit") == 0)) {
-      if (!code_block_open) {
-        break;
-      }
-      else{
-        /* count the quit/exit commands as strings if in a quote block */
+    if (code_block_open) {
         strcat(ruby_code, "\n");
         strcat(ruby_code, last_code_line);
-      }
     }
     else {
-      if (code_block_open) {
-        strcat(ruby_code, "\n");
-        strcat(ruby_code, last_code_line);
+      if ((strcmp(last_code_line, "quit") == 0) || (strcmp(last_code_line, "exit") == 0)) {
+        break;
       }
-      else {
-        strcpy(ruby_code, last_code_line);
-      }
+      strcpy(ruby_code, last_code_line);
     }
 
     /* parse code */
@@ -395,12 +395,12 @@ main(int argc, char **argv)
           mrb_codedump_all(mrb, proc);
         }
         /* pass a proc for evaulation */
-        nregs = first_command ? 0: proc->body.irep->nregs;
         /* evaluate the bytecode */
         result = mrb_context_run(mrb,
             proc,
             mrb_top_self(mrb),
-            nregs);
+            stack_keep);
+        stack_keep = proc->body.irep->nlocals;
         /* did an exception occur? */
         if (mrb->exc) {
           p(mrb, mrb_obj_value(mrb->exc), 0);
@@ -420,13 +420,12 @@ main(int argc, char **argv)
     }
     mrb_parser_free(parser);
     cxt->lineno++;
-    first_command = 0;
   }
   mrbc_context_free(mrb, cxt);
   mrb_close(mrb);
 
 #ifdef ENABLE_READLINE
-  write_history(history_path);
+  MIRB_WRITE_HISTORY(history_path);
 #endif
 
   return 0;

@@ -460,13 +460,15 @@ mark_context(mrb_state *mrb, struct mrb_context *c)
   for (i=0; i<e; i++) {
     mrb_gc_mark(mrb, (struct RBasic*)c->ensure[i]);
   }
-  /* mark closure */
-  for (ci = c->cibase; ci <= c->ci; ci++) {
-    if (!ci) continue;
-    mrb_gc_mark(mrb, (struct RBasic*)ci->env);
-    mrb_gc_mark(mrb, (struct RBasic*)ci->proc);
-    mrb_gc_mark(mrb, (struct RBasic*)ci->target_class);
+  /* mark VM stack */
+  if (c->cibase) {
+    for (ci = c->cibase; ci <= c->ci; ci++) {
+      mrb_gc_mark(mrb, (struct RBasic*)ci->env);
+      mrb_gc_mark(mrb, (struct RBasic*)ci->proc);
+      mrb_gc_mark(mrb, (struct RBasic*)ci->target_class);
+    }
   }
+  /* mark fibers */
   if (c->prev && c->prev->fib) {
     mrb_gc_mark(mrb, (struct RBasic*)c->prev->fib);
   }
@@ -695,6 +697,9 @@ root_scan_phase(mrb_state *mrb)
   mrb_gc_mark(mrb, (struct RBasic*)mrb->exc);
 
   mark_context(mrb, mrb->root_c);
+  if (mrb->root_c->fib) {
+    mrb_gc_mark(mrb, (struct RBasic*)mrb->root_c->fib);
+  }
   if (mrb->root_c != mrb->c) {
     mark_context(mrb, mrb->c);
   }
@@ -834,13 +839,13 @@ incremental_sweep_phase(mrb_state *mrb, size_t limit)
     RVALUE *p = page->objects;
     RVALUE *e = p + MRB_HEAP_PAGE_SIZE;
     size_t freed = 0;
-    int dead_slot = 1;
+    mrb_bool dead_slot = TRUE;
     int full = (page->freelist == NULL);
 
     if (is_minor_gc(mrb) && page->old) {
       /* skip a slot which doesn't contain any young object */
       p = e;
-      dead_slot = 0;
+      dead_slot = FALSE;
     }
     while (p<e) {
       if (is_dead(mrb, &p->as.basic)) {
@@ -1587,5 +1592,5 @@ gc_test(mrb_state *mrb, mrb_value self)
   test_incremental_sweep_phase();
   return mrb_nil_value();
 }
-#endif
-#endif
+#endif  /* GC_DEBUG */
+#endif  /* GC_TEST */
